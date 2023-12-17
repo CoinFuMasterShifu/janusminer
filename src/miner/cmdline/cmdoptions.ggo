@@ -1,0 +1,12 @@
+package "wart-miner-janushash"
+purpose "GPU/CPU miner of the Warthog Network supporting algorithm change to Janushash.
+
+
+By CoinFuMasterShifu, Pumbaa, Timon & Rafiki"
+
+# Options
+option "address" a "Specify address that is mined to" string typestr="WALLETADDRESS" required 
+option "gpus" - "Specify GPUs as comma separated list like \"0,2,3\". By default all GPUs are used." string optional
+option "threads" t "Number of CPU worker threads, use 0 for hardware concurrency. " int default="0" optional
+option "host" h "Host (RPC-Node)" string default="localhost" optional
+option "port" p "Port (RPC-Node)" int default="3000" optional
