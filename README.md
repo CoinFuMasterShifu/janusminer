@@ -22,7 +22,6 @@ Note: Ubuntu 20.04 does not meet these requirements.
 
 ## 😵‍💫 BUILD INSTRUCTIONS
 
-
 * Install gcc, meson, ninja: apt install meson ninja-build build-essential
 * Clone the repo: `git clone https://github.com/CoinFuMasterShifu/janusminer`
 * cd into the repo: `cd janusminer`
@@ -31,6 +30,22 @@ Note: Ubuntu 20.04 does not meet these requirements.
 * [Optional] For old OpenCL headers (like on Ubuntu 20.04):
   - `meson configure -Dopencl-legacy=true`
 * Compile using ninja: `ninja`
+
+### Docker build (node and wallet)
+#### System Requirements
+
+* Linux
+* Docker
+
+#### Build for Linux
+
+##### Ubuntu 18.04
+* Run `DOCKER_BUILDKIT=1 docker build . -f Dockerfile_Ubuntu18 --output build` in the repo directory.
+##### Ubuntu 20.04
+* Run `DOCKER_BUILDKIT=1 docker build . -f DockerfilesDockerfile_Ubuntu20 --output build` in the repo directory.
+##### Ubuntu 22.04
+* Run `DOCKER_BUILDKIT=1 docker build . -f Dockerfiles/Dockerfile_Ubuntu22 --output build` in the repo directory.
+Binaries are located in `./build` directory.
 
 
 ## ▶️ USAGE
