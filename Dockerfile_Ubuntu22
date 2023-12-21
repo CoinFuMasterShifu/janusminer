@@ -1,0 +1,18 @@
+FROM ubuntu:22.04 AS build
+
+RUN apt update && \
+        apt install build-essential python3-pip opencl-headers ocl-icd-opencl-dev pkg-config xxd -y && \
+        rm -rf /var/cache/apt && \
+        python3 -m pip install meson ninja
+
+COPY . /code
+RUN mkdir /build
+WORKDIR /code
+RUN --mount=type=cache,target=/build LDFLAGS='-lpthread -static-libgcc -static-libstdc++' meson /build/code --default-library static --buildtype=release
+WORKDIR /build/code
+RUN --mount=type=cache,target=/build ninja
+RUN mkdir /install
+RUN --mount=type=cache,target=/build DESTDIR=/install meson install
+
+FROM scratch AS export-stage
+COPY --from=build install/usr/local/bin/wart-miner .
