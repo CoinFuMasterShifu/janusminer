@@ -1192,7 +1192,8 @@ void JanusMinerOpt::check_set_header(const Header& header)
     memset(hasherrefresh + keyRefreshsize, 0, keysize - keyRefreshsize);
 }
 
-inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32_t threshold){
+inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32_t threshold)
+{
 
     check_set_header(job.shared->mined.block.header);
 
@@ -1231,11 +1232,13 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
 
         // refresh the key
         fixupkey(pMoveScratch);
+        if (curHash[0] != 0 || curHash[1] != 0 || (curHash[2] > 7u))
+            continue;
         if (job.target(i).compatible(curHash)) {
             *reinterpret_cast<uint32_t*>(arg.data() + 76) = nonce;
-            Block b{job.shared->mined.block};
+            Block b { job.shared->mined.block };
             b.header = arg;
-            res.success = MineResult::Success { curHash, b};
+            res.success = MineResult::Success { curHash, b };
             return true;
         }
     }
@@ -1248,8 +1251,8 @@ MineResult JanusMinerOpt::mine(const std::vector<MinerJob>& jobs, uint32_t thres
     auto start = steady_clock::now();
     MineResult res;
 
-    for (auto &job : jobs) {
-        if (mine_job(res,job, threshold)) 
+    for (auto& job : jobs) {
+        if (mine_job(res, job, threshold))
             break;
     }
     assert(res.total != 0);
