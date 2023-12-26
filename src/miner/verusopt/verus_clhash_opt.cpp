@@ -1,6 +1,12 @@
 #include "verus_clhash_opt.hpp"
+#include "block/header/custom_float.hpp"
 #include "block/header/difficulty.hpp"
 #include "block/header/difficulty_declaration.hpp"
+namespace {
+#include "./memzero.cpp"
+#include "./sha2.cpp"
+}
+#include "crypto/hasher_sha256.hpp"
 #include <chrono>
 #include <iostream>
 
@@ -1170,6 +1176,36 @@ JanusMinerOpt::JanusMinerOpt()
 {
 }
 
+inline bool operator<(const CustomFloat& hashproduct, TargetV2 t)
+{
+    auto zerosTarget { t.zeros10() };
+    assert(hashproduct.positive());
+    assert(hashproduct.exponent() <= 0);
+    uint32_t zerosHashproduct(-hashproduct.exponent());
+    if (zerosTarget > zerosHashproduct)
+        return false;
+    uint64_t bits32 { t.bits22() << 10 };
+    if (zerosTarget < zerosHashproduct)
+        return true;
+    return hashproduct.mantissa() < bits32;
+}
+
+inline bool operator<(const CustomFloat& arg, const CustomFloat bound)
+{
+    assert(bound.positive());
+    assert(bound.exponent() <= 0);
+    uint32_t zerosBound(-bound.exponent());
+
+    assert(arg.positive());
+    assert(arg.exponent() <= 0);
+    uint32_t zerosArg(-arg.exponent());
+    if (zerosArg < zerosBound)
+        return false;
+    if (zerosArg > zerosBound)
+        return true;
+    return arg.mantissa() < bound.mantissa();
+}
+
 void JanusMinerOpt::check_set_header(const Header& header)
 {
     if (!fresh && (memcmp(header.data(), arg.data(), 76) == 0))
@@ -1232,9 +1268,20 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
 
         // refresh the key
         fixupkey(pMoveScratch);
-        if (curHash[0] != 0 || curHash[1] != 0 || (curHash[2] > 7u))
+        if (!job.target(i).compatible(curHash))
             continue;
-        if (job.target(i).compatible(curHash)) {
+        //
+        // now exact test
+        //
+        if (!(curHash < CustomFloat(-30, 3496838790))) {
+            // reject verushash with log_e less than -21
+            continue;
+        }
+        auto verusFloat { CustomFloat(curHash) };
+        auto sha256tFloat { CustomFloat(hashSHA256(arg)) };
+        constexpr auto factor { CustomFloat(0, 3006477107) }; // = 0.7 <-- this can be decreased if necessary
+        auto hashProduct { verusFloat * pow(sha256tFloat, factor) };
+        if ( curHash[0] == 0 && (hashProduct < job.targetV2)){
             *reinterpret_cast<uint32_t*>(arg.data() + 76) = nonce;
             Block b { job.shared->mined.block };
             b.header = arg;

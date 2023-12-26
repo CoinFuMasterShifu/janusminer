@@ -82,7 +82,9 @@ void DevicePool::print_hashrate()
 
 void DevicePool::handle_event(const WorkerResult& wr)
 {
-    verusPool.push_job(Verus::PoolJob { .mined { std::move(wr) } });
+    verusPool.push_job(Verus::PoolJob { .mined { std::move(wr) } ,
+            .target{wr.target}
+            });
 }
 
 void DevicePool::handle_event(const DoSubmit& e)

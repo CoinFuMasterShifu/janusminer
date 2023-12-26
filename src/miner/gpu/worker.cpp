@@ -205,6 +205,7 @@ void DeviceWorker::mine_triple_sha()
     pool.notify_mined_triple_sha(TripleSha::MinedValues {
         .duration { delta },
         .invertedTargets { targets },
+        .target{miner.get_job().t},
         .deviceId = deviceId,
         .offset = offset,
         .block { t.block },

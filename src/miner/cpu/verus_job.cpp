@@ -69,6 +69,7 @@ std::optional<Verus::WorkerJob> JobQueue::pop(size_t N, Verus::MineThreshold t)
         res.push_back({
             .shared { queue.front() },
             .nonceOffset = j.mined.offset,
+            .targetV2{j.target},
             .vec_begin { v.begin() },
             .job_begin { v.begin() + cursor },
             .job_end { v.begin() + cursor + M },

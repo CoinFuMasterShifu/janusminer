@@ -90,6 +90,7 @@ public:
     }
     size_t set_triple_sha_batchsize(size_t tsbs);
 
+    const TripleShaJob& get_job() const{return std::get<TripleShaJob>(job);}
 private:
     void set_block_header(std::span<uint8_t, 76> h)
     {

@@ -2,7 +2,7 @@
 verusoptlib = static_library('verusopt', 
   ['verusopt/verus_clhash_opt.cpp'],
   cpp_args: ['-mpclmul', '-msse4', '-msse4.1', '-msse4.2', '-mssse3', '-mavx', '-maes', '-O3'],
-  include_directories : [include_spdlog, include_wh,include_json, include_httplib],
+  include_directories : [include_spdlog, include_wh,include_json, include_httplib,include_trezorcrypto],
 )
 
 cpp_args = ['-msse4.1']

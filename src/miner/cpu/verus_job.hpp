@@ -1,5 +1,6 @@
 #pragma once
 #include "block/block.hpp"
+#include "block/header/difficulty_declaration.hpp"
 #include "gpu/mined_values.hpp"
 #include "hashrate.hpp"
 #include <memory>
@@ -10,6 +11,7 @@
 namespace Verus {
 struct PoolJob {
     TripleSha::MinedValues mined;
+    TargetV2 target;
 };
 
 struct MineThreshold {
@@ -25,6 +27,7 @@ struct MinerJob {
     bool ignore_index(uint32_t i, uint32_t threshold) const;
     std::shared_ptr<PoolJob> shared;
     uint32_t nonceOffset;
+    TargetV2 targetV2;
     V::const_iterator vec_begin;
     V::const_iterator job_begin;
     V::const_iterator job_end;
