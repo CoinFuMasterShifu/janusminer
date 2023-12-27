@@ -1278,7 +1278,7 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
             continue;
         }
         auto verusFloat { CustomFloat(curHash) };
-        auto sha256tFloat { CustomFloat(hashSHA256(arg)) };
+        auto sha256tFloat { CustomFloat(hashSHA256(hashSHA256(hashSHA256(arg)))) };
         constexpr auto factor { CustomFloat(0, 3006477107) }; // = 0.7 <-- this can be decreased if necessary
         auto hashProduct { verusFloat * pow(sha256tFloat, factor) };
         if ( curHash[0] == 0 && (hashProduct < job.targetV2)){
