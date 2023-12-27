@@ -59,7 +59,7 @@ private:
     }
 
 public:
-    constexpr TargetV2(uint32_t data = 0u);
+    constexpr TargetV2(uint32_t data);
     TargetV2(double difficulty);
 
     bool operator!=(const TargetV2& t) const { return data != t.data; };

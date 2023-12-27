@@ -110,7 +110,6 @@ public: // TODO private
 
 private:
     std::array<uint8_t, 76> blockHeader;
-    TargetV2 target;
     CL::CommandQueue queue;
     CLFunction<>::Returning<uint32_t> reset_counter_fun;
     CLFunction<uint32_t>::Returning<> set_target_fun;
