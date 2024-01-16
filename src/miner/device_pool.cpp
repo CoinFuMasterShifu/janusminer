@@ -52,13 +52,21 @@ DevicePool::DevicePool(const Address& address, const std::vector<CL::Device>& de
     }
 }
 
+Hashrate janusscore(uint64_t verus,uint64_t sha256t){
+    if (verus>sha256t || verus == 0) {
+        return 0.0;
+    }
+    double c{0.001503439192977};
+    return double(sha256t)*(pow(c+double(verus)/double(sha256t),0.3)-pow(c,0.3))/(pow(c+1,0.3)-pow(c,0.3));
+}
+
 void DevicePool::print_hashrate()
 {
     std::vector<std::pair<std::string, uint64_t>> hashrates;
-    uint64_t sum { 0 };
+    uint64_t sumSha256t { 0 };
     for (auto& dt : workers) {
         auto hashrate = dt->get_hashrate();
-        sum += hashrate;
+        sumSha256t += hashrate;
         hashrates.push_back({ dt->deviceName, hashrate });
     }
 
@@ -69,7 +77,7 @@ void DevicePool::print_hashrate()
     //     uint32_t seconds(task->header.target_v1().difficulty() / sum);
         // durationstr = spdlog::fmt_lib::format("(~{} per block)", format_duration(seconds));
     // }
-    spdlog::info("Total hashrate (GPU): {}/s", Hashrate(sum).format().to_string());
+    spdlog::info("Total hashrate (GPU): {}/s", Hashrate(sumSha256t).format().to_string());
 
     for (auto& [name, hr] : hashrates) {
         spdlog::info("   {}: {}/s", name, Hashrate(hr).format().to_string());
@@ -78,6 +86,7 @@ void DevicePool::print_hashrate()
     for (size_t i=0; i< verusHashrates.size(); ++i){
         spdlog::info("   Thread#{}: {}/s", i, verusHashrates[i].format().to_string());
     }
+    spdlog::info("Janusscore: {}/s", janusscore(sumVerus.val,sumSha256t).format().to_string());
 }
 
 void DevicePool::handle_event(const WorkerResult& wr)

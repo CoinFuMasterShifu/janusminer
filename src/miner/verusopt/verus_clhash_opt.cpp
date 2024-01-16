@@ -2,6 +2,8 @@
 #include "block/header/custom_float.hpp"
 #include "block/header/difficulty.hpp"
 #include "block/header/difficulty_declaration.hpp"
+#include "general/hex.hpp"
+#include "spdlog/spdlog.h"
 namespace {
 #include "./memzero.cpp"
 #include "./sha2.cpp"
@@ -1277,12 +1279,22 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
             // reject verushash with log_e less than -21
             continue;
         }
-        auto verusFloat { CustomFloat(curHash) };
+        *reinterpret_cast<uint32_t*>(arg.data() + 76) = nonce;
         auto sha256tFloat { CustomFloat(hashSHA256(hashSHA256(hashSHA256(arg)))) };
+
+        constexpr auto c = CustomFloat(-9, 3306097748); // exp(-6.5)
+        if (sha256tFloat < c)
+            return false;
+
+
+        // compute janushash
         constexpr auto factor { CustomFloat(0, 3006477107) }; // = 0.7 <-- this can be decreased if necessary
-        auto hashProduct { verusFloat * pow(sha256tFloat, factor) };
-        if ( curHash[0] == 0 && (hashProduct < job.targetV2)){
-            *reinterpret_cast<uint32_t*>(arg.data() + 76) = nonce;
+        auto verusFloat { CustomFloat(curHash) };
+        auto janushash { verusFloat * pow(sha256tFloat, factor) };
+
+        if ( curHash[0] == 0 && (janushash < job.targetV2)){
+            spdlog::info("DEBUG LOG: curHash: {}, verusFloat: {}, sha256tFloat: {}, hashProduct: {}",
+                    serialize_hex(curHash), verusFloat.to_double(),sha256tFloat.to_double(),janushash.to_double());
             Block b { job.shared->mined.block };
             b.header = arg;
             res.success = MineResult::Success { curHash, b };
