@@ -1293,8 +1293,6 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
         auto janushash { verusFloat * pow(sha256tFloat, factor) };
 
         if ( curHash[0] == 0 && (janushash < job.targetV2)){
-            spdlog::info("DEBUG LOG: curHash: {}, verusFloat: {}, sha256tFloat: {}, hashProduct: {}",
-                    serialize_hex(curHash), verusFloat.to_double(),sha256tFloat.to_double(),janushash.to_double());
             Block b { job.shared->mined.block };
             b.header = arg;
             res.success = MineResult::Success { curHash, b };
