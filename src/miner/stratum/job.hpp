@@ -1,5 +1,5 @@
 #pragma once
-#include "block/header/difficulty_declaration.hpp"
+#include "block/header/difficulty.hpp"
 #include "block/header/header.hpp"
 #include "crypto/hash.hpp"
 #include "messages.hpp"
