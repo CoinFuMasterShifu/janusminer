@@ -20,7 +20,6 @@ struct MinedValues {
         return std::visit([&](auto& j) -> std::variant<Block, stratum::Submission> { return j.submission(nonce); }, job);
     }
 
-    size_t cleanIndex;
     [[nodiscard]] Hashrate hashrate() const
     {
         return { invertedTargets.size(), duration };

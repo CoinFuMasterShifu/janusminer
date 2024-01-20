@@ -82,8 +82,6 @@ void VerusPool::push_job(Verus::PoolJob job)
     hashrateEstimator.push(job.mined.deviceId, hr);
     update_produce_per_second(hashrateEstimator.hashrate());
 
-    if (job.mined.cleanIndex != cleanIndex)
-        return;
     {
         std::lock_guard l(jobMutex);
         jobQueue.push(std::move(job));
