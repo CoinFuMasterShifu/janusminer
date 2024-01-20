@@ -1,6 +1,7 @@
 # subdir('./secp256k1')
 # subdir('./sqlitecpp')
 subdir('./spdlog')
+subdir('./asio')
 # subdir('./uSockets')
 # subdir('./uWebsockets')
 subdir('./json')

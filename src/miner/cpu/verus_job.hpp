@@ -10,8 +10,8 @@
 
 namespace Verus {
 struct PoolJob {
-    TripleSha::MinedValues mined;
-    TargetV2 target;
+    const TripleSha::MinedValues mined;
+    TargetV2 target() const;
 };
 
 struct MineThreshold {
@@ -56,7 +56,7 @@ public:
     void set_job_accept(size_t jai) { jobAcceptIndex = jai; }
     auto get_clean_index() const { return cleanIndex; }
     bool compabitlbe(const Verus::WorkerJob&);
-    [[nodiscard]] auto watermark() const {return _watermark;}
+    [[nodiscard]] auto watermark() const { return _watermark; }
 
 private:
     void drop();
@@ -69,4 +69,9 @@ private:
     std::queue<std::shared_ptr<PoolJob>> queue;
     size_t _watermark { 0 };
 };
+
+struct Success {
+    Hash hash;
+    std::variant<Block, stratum::Submission> submission;
 };
+}

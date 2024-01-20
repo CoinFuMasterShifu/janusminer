@@ -6,11 +6,13 @@
 #include "spdlog/spdlog.h"
 #include <arpa/inet.h>
 #include <condition_variable>
+#include "stratum/job.hpp"
 #include <iostream>
 #include <optional>
 #include <span>
 #include <thread>
 #include <variant>
+
 
 class MinerDevice {
     static constexpr size_t numSlots = 8;
@@ -77,12 +79,6 @@ public:
         return reset_counter_fun.run(queue, nd1);
     }
 
-    void set_double_sha_job(DoubleShaJob j)
-    { // for lecacy algorithm
-        set_block_header(j.header);
-        set_target(j.target);
-        job = j;
-    }
     void set_triple_sha_job(TripleShaJob j)
     { // for lecacy algorithm
         set_block_header(j.header);
@@ -158,6 +154,10 @@ public:
         return (hashes * 1000 * 1000) / us;
     }
 
+    void set_job(const StratumJobGenerator& sj)
+    {
+        push_event(sj);
+    };
     void set_job(const MineJob& b)
     {
         push_event(SetTask { b });
@@ -170,7 +170,6 @@ public:
 private:
     void run();
     bool try_mine();
-    void mine_double_sha();
     void mine_triple_sha();
 
     void init_mining();
@@ -182,11 +181,13 @@ private:
     struct SetTask {
         MineJob task;
     };
-    using Event = std::variant<Stop, SetTask>;
+    using SetStratumTask=StratumJobGenerator;
+    using Event = std::variant<Stop, SetTask, SetStratumTask>;
     std::vector<Event> events;
     void push_event(Event);
     void handle_event(const Stop&);
     void handle_event(SetTask&&);
+    void handle_event(SetStratumTask&&);
 
     // thread variables
     uint32_t hashesPerStep { 500000u };
@@ -208,7 +209,7 @@ private:
     std::mutex m;
     bool wakeup = false;
     std::condition_variable cv;
-    std::optional<MineJob> currentTask;
+    std::optional<std::variant<MineJob,StratumJob>> currentTask;
     std::jthread thread;
 
     // const variables

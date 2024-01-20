@@ -39,9 +39,6 @@ struct gengetopt_args_info
 {
   const char *help_help; /**< @brief Print help and exit help description.  */
   const char *version_help; /**< @brief Print version and exit help description.  */
-  char * address_arg;	/**< @brief Specify address that is mined to.  */
-  char * address_orig;	/**< @brief Specify address that is mined to original value given at command line.  */
-  const char *address_help; /**< @brief Specify address that is mined to help description.  */
   char * gpus_arg;	/**< @brief Specify GPUs as comma separated list like \"0,2,3\". By default all GPUs are used..  */
   char * gpus_orig;	/**< @brief Specify GPUs as comma separated list like \"0,2,3\". By default all GPUs are used. original value given at command line.  */
   const char *gpus_help; /**< @brief Specify GPUs as comma separated list like \"0,2,3\". By default all GPUs are used. help description.  */
@@ -54,14 +51,25 @@ struct gengetopt_args_info
   int port_arg;	/**< @brief Port (RPC-Node) (default='3000').  */
   char * port_orig;	/**< @brief Port (RPC-Node) original value given at command line.  */
   const char *port_help; /**< @brief Port (RPC-Node) help description.  */
+  char * address_arg;	/**< @brief Specify address that is mined to (for mining directly to node) (default='').  */
+  char * address_orig;	/**< @brief Specify address that is mined to (for mining directly to node) original value given at command line.  */
+  const char *address_help; /**< @brief Specify address that is mined to (for mining directly to node) help description.  */
+  char * user_arg;	/**< @brief Enable stratum protocol and specify username (default='').  */
+  char * user_orig;	/**< @brief Enable stratum protocol and specify username original value given at command line.  */
+  const char *user_help; /**< @brief Enable stratum protocol and specify username help description.  */
+  char * password_arg;	/**< @brief Password (for Stratum) (default='').  */
+  char * password_orig;	/**< @brief Password (for Stratum) original value given at command line.  */
+  const char *password_help; /**< @brief Password (for Stratum) help description.  */
   
   unsigned int help_given ;	/**< @brief Whether help was given.  */
   unsigned int version_given ;	/**< @brief Whether version was given.  */
-  unsigned int address_given ;	/**< @brief Whether address was given.  */
   unsigned int gpus_given ;	/**< @brief Whether gpus was given.  */
   unsigned int threads_given ;	/**< @brief Whether threads was given.  */
   unsigned int host_given ;	/**< @brief Whether host was given.  */
   unsigned int port_given ;	/**< @brief Whether port was given.  */
+  unsigned int address_given ;	/**< @brief Whether address was given.  */
+  unsigned int user_given ;	/**< @brief Whether user was given.  */
+  unsigned int password_given ;	/**< @brief Whether password was given.  */
 
 } ;
 

@@ -102,7 +102,7 @@ public:
     void stop_mining();
     void clean(TargetV2 nextTarget);
 
-    void push_janus_mined(const Block& b);
+    void push_janus_mined(Verus::Success&& b);
 
     // async functions (with locks)
     std::optional<Verus::WorkerJob> pop_job(size_t N);

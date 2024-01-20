@@ -7,6 +7,8 @@
 #include "general/hex.hpp"
 #include "gpu/hashrate_estimator.hpp"
 #include "gpu/worker.hpp"
+#include "stratum/connection_server.hpp"
+#include "stratum/messages.hpp"
 #include "synctools.hpp"
 #include "verus_pool.hpp"
 #include <chrono>
@@ -14,6 +16,34 @@
 namespace Verus {
 class Worker;
 }
+struct NodeConnectionData {
+    std::string host;
+    uint16_t port;
+    Address address;
+};
+
+class StratumConnectionData {
+    StratumJobDataBase jobdata;
+    std::optional<stratum::Mining_Notify> _notify;
+    std::optional<stratum::Subscription> _subscription;
+
+private:
+    std::optional<StratumJobGenerator> get_job();
+
+public:
+    auto get_connection_id() const
+    {
+        return jobdata.connectionId;
+    }
+    void clear(size_t connectionId = 0)
+    {
+        *this = {};
+        jobdata.connectionId = connectionId;
+    }
+    [[nodiscard]] std::optional<StratumJobGenerator> update(const stratum::Mining_Notify&);
+    [[nodiscard]] std::optional<StratumJobGenerator> update(const stratum::Mining_SetDifficulty&);
+    void update(const stratum::Subscription&);
+};
 
 class HashrateEstimator { // TODO: estimate on producer side
     struct Node {
@@ -64,17 +94,13 @@ class DevicePool {
     friend class Verus::Worker;
 
 public:
-    DevicePool(const Address& address, const std::vector<CL::Device>& devices, std::string host, uint16_t port, size_t verusWorkers);
+    DevicePool(const std::vector<CL::Device>& devices, size_t verusWorkers, std::variant<stratum::ConnectionData, NodeConnectionData> connectionData);
     bool empty() const { return workers.empty(); }
 
     void notify_mined_triple_sha(TripleSha::MinedValues); // for Janushash
-    void notify_mined_double_sha(const Block& b) // for legacy mining
+    void push_janus_mined(Verus::Success&& s)
     {
-        push_event(DoSubmit { b });
-    }
-    void push_janus_mined(const Block& b)
-    {
-        push_event(OnJanusMined { b });
+        push_event(OnJanusMined { std::move(s) });
     }
 
     void notify_shutdown()
@@ -84,15 +110,16 @@ public:
     }
 
     void run();
-    struct OnJanusMined {
-        Block b;
-    };
-    struct DoSubmit {
+    using OnJanusMined = Verus::Success;
+    using StratumSetDiff = stratum::Mining_SetDifficulty;
+    using StratumNotify = stratum::Mining_Notify;
+    struct OnStratumJob {
         Block b;
     };
     using WorkerResult = TripleSha::MinedValues;
 
-    using Event = std::variant<WorkerResult, DoSubmit, OnJanusMined>;
+    using Event = std::variant<WorkerResult, OnJanusMined,
+        StratumSetDiff, StratumNotify>;
 
     class JobStatus {
     public:
@@ -140,6 +167,8 @@ public:
     };
 
 private:
+    void init_connection(const stratum::ConnectionData&);
+    void init_connection(const NodeConnectionData&);
     void push_event(Event e)
     {
         std::lock_guard l(st.m);
@@ -148,13 +177,21 @@ private:
     };
     void print_hashrate();
     void handle_event(const WorkerResult&);
-    void handle_event(const DoSubmit&);
     void handle_event(OnJanusMined&&);
+
+    void handle_event(StratumNotify&&);
+    void handle_event(StratumSetDiff&&);
+    void handle_event(stratum::ConnectionStart&&);
+    void handle_event(stratum::ConnectionEnd&&);
+    void handle_event(stratum::Subscription&&);
+
     void poll();
     void set_ignore_below();
     void assign_work(const Block& b);
+    void assign_work(StratumJobGenerator&& sj);
     void stop_mining();
     void submit(const Block& b);
+    void submit(const stratum::Submission& b);
 
     // multithread stuff
     SyncTools st;
@@ -189,6 +226,10 @@ private:
     const std::chrono::milliseconds pollInterval { 500 };
     std::chrono::steady_clock::time_point nextPoll;
 
-    Address address;
-    API api;
+    // for direct node communication
+    std::optional<Address> address;
+    std::unique_ptr<API> api;
+
+    std::unique_ptr<stratum::ConnectionServer> stratumConnection;
+    StratumConnectionData stratumConnectionData;
 };

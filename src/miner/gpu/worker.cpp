@@ -12,7 +12,7 @@ size_t MinerDevice::set_triple_sha_batchsize(size_t hashesPerStep)
 {
     reserved = std::max(hashesPerStep, reserved);
     reserved = mine_fun_triple_sha.override_reserve_outvector<0>(reserved);
-    if (hashesPerStep> reserved) 
+    if (hashesPerStep > reserved)
         hashesPerStep = reserved;
     mine_fun_triple_sha.generator<0>().elements = hashesPerStep;
     return hashesPerStep;
@@ -22,13 +22,15 @@ void DeviceWorker::init_mining()
 {
     hashesTried = 0;
     auto& t = currentTask.value();
-    t.set_random_seed((pool.blockSeed++) % 2000);
-    randOffset = randuint32();
+    if (std::holds_alternative<MineJob>(t)) {
+        auto& j { std::get<MineJob>(t) };
+        j.set_random_seed((pool.blockSeed++) % 2000);
+        randOffset = randuint32();
 
-    if (!t.t.is_janushash()) {
-        miner.set_double_sha_job({ t.t.binary(), t.get_header() });
+        miner.set_triple_sha_job({ std::get<TargetV2>(j.t.get()), j.header() });
     } else {
-        miner.set_triple_sha_job({ std::get<TargetV2>(t.t.get()), t.get_header() });
+        auto& j { std::get<StratumJob>(t) };
+        miner.set_triple_sha_job({ j.target(), j.header() });
     }
 }
 
@@ -37,35 +39,9 @@ bool DeviceWorker::try_mine()
     using namespace std::chrono;
     if (!currentTask)
         return false;
-    auto& t { *currentTask };
-    if (t.t.is_janushash()) {
-        mine_triple_sha();
-    } else {
-        mine_double_sha();
-    }
+    mine_triple_sha();
 
     return true;
-};
-
-void DeviceWorker::mine_double_sha()
-{
-    if (hashesTried == std::numeric_limits<uint32_t>::max()) {
-        init_mining();
-    }
-    auto nHashes { std::min(std::numeric_limits<uint32_t>::max() - hashesTried,
-        hashesPerStep) };
-    auto [args, hashes] = miner.mine(nHashes, hashesTried + randOffset);
-    auto [found] = miner.reset_counter();
-    using namespace std;
-    if (found > 0) {
-        auto& t { currentTask.value() };
-        auto& h { t.block.header };
-        h.set_nonce(hton32(args[0]));
-        pool.notify_mined_double_sha(t.block); // TODO handle current task jobIndex
-    }
-
-    hashesTried += nHashes;
-    hashCounter += nHashes;
 };
 
 std::optional<std::string> path;
@@ -170,8 +146,6 @@ void DeviceWorker::mine_triple_sha()
     }
     using namespace std::chrono;
 
-
-    // TODO
     auto nHashes { std::min(std::numeric_limits<uint32_t>::max() - hashesTried, hashesPerStep) };
     uint32_t offset = hashesTried + randOffset;
 
@@ -186,17 +160,16 @@ void DeviceWorker::mine_triple_sha()
     assert(targets.size() == hashesPerStep);
     assert(targets.size() != 0);
     targets.resize(nHashes);
-    auto& t { currentTask.value() };
-
+    const auto& t { currentTask.value() };
 
     // time hash computation
     // scale to achieve 100ms
-    auto now {steady_clock::now()};
+    auto now { steady_clock::now() };
     auto delta { steady_clock::now() - *lastHashrateCheckpoint };
     if (hashesPerStep == nHashes) {
         auto ms { duration_cast<milliseconds>(delta).count() };
         trace_log().debug("[SHA256T/MINED] {} in {}ms", nHashes, ms);
-        hashesPerStep = ((nHashes*100ms)/delta);
+        hashesPerStep = ((nHashes * 100ms) / delta);
         assert(hashesPerStep != 0);
         hashesPerStep = miner.set_triple_sha_batchsize(hashesPerStep);
     }
@@ -205,11 +178,9 @@ void DeviceWorker::mine_triple_sha()
     pool.notify_mined_triple_sha(TripleSha::MinedValues {
         .duration { delta },
         .invertedTargets { targets },
-        .target{miner.get_job().t},
         .deviceId = deviceId,
         .offset = offset,
-        .block { t.block },
-        .cleanIndex = t.cleanIndex });
+        .job { t } });
 };
 
 void DeviceWorker::handle_event(const Stop&)
@@ -222,6 +193,12 @@ void DeviceWorker::handle_event(SetTask&& e)
     currentTask = e.task;
     init_mining();
 }
+
+void DeviceWorker::handle_event(SetStratumTask&& e)
+{
+    currentTask = std::move(e);
+    init_mining();
+};
 
 void DeviceWorker::run()
 {

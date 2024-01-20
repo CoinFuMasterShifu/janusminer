@@ -1,14 +1,17 @@
 #include "api_call.hpp"
 #include "cmdline/cmdline.h"
 #include "crypto/address.hpp"
-#include "log/trace.hpp"
 #include "crypto/verushash/verushash.hpp"
+#include "device_pool.hpp"
 #include "general/hex.hpp"
+#include "log/trace.hpp"
 #include "spdlog/spdlog.h"
+#include "stratum/connection.hpp"
 #include <iostream>
+#include <variant>
 using namespace std;
 
-int start_miner(const Address& address, std::string host, uint16_t port, std::string gpus, size_t threads);
+int start_miner(std::string gpus, size_t threads, std::variant<stratum::ConnectionData, NodeConnectionData> connectionData);
 
 int test_gpu_miner2();
 
@@ -17,16 +20,31 @@ int process(gengetopt_args_info& ai)
     try {
         std::string host { ai.host_arg };
         uint16_t port(ai.port_arg);
-        spdlog::info("Node RPC is {}:{}", host, port);
         if (ai.threads_arg < 0)
             throw std::runtime_error("Illegal value " + to_string(ai.threads_arg) + " for option --threads.");
-        size_t threads{ai.threads_arg == 0 ? std::thread::hardware_concurrency(): ai.threads_arg};
-        Address address(ai.address_arg);
+        size_t threads { ai.threads_arg == 0 ? std::thread::hardware_concurrency() : ai.threads_arg };
+        // Address address(ai.address_arg);
         std::string gpus;
         if (ai.gpus_given) {
             gpus.assign(ai.gpus_arg);
         }
-        start_miner(address, host, port, gpus, threads);
+        if (ai.user_given) {// stratum
+            if (ai.address_given) 
+                spdlog::warn("Address parameter '-a' is ignored because stratum mining is enabled via '-u'");
+            start_miner(gpus, threads, 
+                    stratum::ConnectionData{
+                    .host{ai.host_arg},
+                    .port{std::to_string(ai.port_arg)},
+                    .user{ai.user_arg},
+                    .pass{ai.password_arg}
+                    });
+        } else {
+            start_miner(gpus, threads,
+                NodeConnectionData {
+                    .host { host },
+                    .port = port,
+                    .address { ai.address_arg } });
+        }
     } catch (std::runtime_error& e) {
         spdlog::error("{}", e.what());
         return -1;
@@ -39,13 +57,6 @@ int process(gengetopt_args_info& ai)
 
 int main(int argc, char** argv)
 {
-    // trace_log().info("Hello World");
-    // trace_log().flush();
-    // std::array<uint8_t,80> arr;
-    // assert(parse_hex("9cf9453887413be274bf5ef7e57509b844c7055f4a64a5813c5a4e72e689d33c087fffff80a06ad2fea4aa42d9f6fa1ed05d3dfdf648f8e53e6aa45c5a2cee6d6dc6042c00000002657b67597f06a2e9",arr));
-    // cout<<"Hash: "<< serialize_hex(verus_hash(arr));
-    // return 0;
-
     srand(time(0));
     cout << "Janushash Miner (By CoinFuMasterShifu) ⚒ ⛏" << endl;
     gengetopt_args_info ai;

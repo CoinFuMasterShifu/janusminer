@@ -44,10 +44,6 @@ namespace Verus {
 // };
 
 struct MineResult {
-    struct Success {
-        Hash hash;
-        Block block;
-    };
     std::chrono::steady_clock::duration duration;
     size_t total { 0 };
     size_t processed { 0 };
@@ -62,13 +58,13 @@ public:
 
 private:
     bool mine_job(MineResult& res, const MinerJob& j, uint32_t threshold);
-    void check_set_header(const Header&);
+    void check_set_header(const std::array<uint8_t,76>&);
 
 private:
     Verus::VerusHasher vh;
     alignas(32) uint8_t key[2 * Verus::keySizeInBytes];
     bool fresh { true };
-    alignas(4) std::array<uint8_t, 80> arg;
+    alignas(4) std::array<uint8_t, 80> header;
     Hash curSeed;
     uint32_t seedOffset { 0 };
 };

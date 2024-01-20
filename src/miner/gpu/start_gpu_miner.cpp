@@ -1,5 +1,5 @@
-#include "gpu/cl_function.hxx"
 #include "device_pool.hpp"
+#include "gpu/cl_function.hxx"
 #include "gpu/worker.hpp"
 #include "helpers.hpp"
 #include "spdlog/spdlog.h"
@@ -62,7 +62,7 @@ auto read_file(std::string path)
     return s;
 }
 
-int start_miner(const Address& address, std::string host, uint16_t port, std::string gpus, size_t threads)
+int start_miner(std::string gpus, size_t threads, std::variant<stratum::ConnectionData, NodeConnectionData> connectionData)
 {
     srand(time(0));
 
@@ -97,8 +97,8 @@ int start_miner(const Address& address, std::string host, uint16_t port, std::st
             return -1;
         }
     }
-    cout<<"Using "<<threads<<" CPU threads for Verushash"<<endl;
+    cout << "Using " << threads << " CPU threads for Verushash" << endl;
 
-    DevicePool(address, dv, host, port, threads).run();
+    DevicePool(dv, threads, connectionData).run();
     return 0;
 }

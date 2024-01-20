@@ -8,7 +8,7 @@ void MineJob::set_random_seed(uint32_t newSeed){
     block.header.set_merkleroot(bv.merkleRoot());
 }
 
-std::array<uint8_t,76> MineJob::get_header() const {
+std::array<uint8_t,76> MineJob::header() const {
     std::array<uint8_t, 76> h;
     std::copy(block.header.data(), block.header.data() + 76, h.data());
     return h;

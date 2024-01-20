@@ -25,9 +25,9 @@ void VerusPool::clean(TargetV2 nextTarget)
     jobQueue.clear(cleanIndex);
 };
 
-void VerusPool::push_janus_mined(const Block& b)
+void VerusPool::push_janus_mined(Verus::Success&& b)
 {
-    parent.push_janus_mined(b);
+    parent.push_janus_mined(std::move(b));
 }
 
 void VerusPool::push_event(Event e)

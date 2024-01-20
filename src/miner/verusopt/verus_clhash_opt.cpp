@@ -4,6 +4,7 @@
 #include "block/header/difficulty_declaration.hpp"
 #include "general/hex.hpp"
 #include "spdlog/spdlog.h"
+#include <span>
 namespace {
 #include "./memzero.cpp"
 #include "./sha2.cpp"
@@ -1208,14 +1209,15 @@ inline bool operator<(const CustomFloat& arg, const CustomFloat bound)
     return arg.mantissa() < bound.mantissa();
 }
 
-void JanusMinerOpt::check_set_header(const Header& header)
+void JanusMinerOpt::check_set_header(const std::array<uint8_t, 76>& newheader)
 {
-    if (!fresh && (memcmp(header.data(), arg.data(), 76) == 0))
+    if (!fresh && (memcmp(newheader.data(), header.data(), 76) == 0))
         return;
     fresh = false;
-    std::copy(header.begin(), header.end(), arg.begin());
+    std::copy(newheader.begin(), newheader.end(), header.begin());
+    memset(header.begin() + 76, 0, 4);
     vh.reset();
-    vh.write(arg.data(), arg.size(), haraka512);
+    vh.write(header.data(), header.size(), haraka512);
 
     u128* hashKey = (u128*)key;
     uint8_t* hasherrefresh = ((uint8_t*)hashKey) + keySizeInBytes;
@@ -1233,7 +1235,8 @@ void JanusMinerOpt::check_set_header(const Header& header)
 inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32_t threshold)
 {
 
-    check_set_header(job.shared->mined.block.header);
+    const auto& mined { job.shared->mined };
+    check_set_header(mined.header());
 
     alignas(32) Hash curHash;
 
@@ -1279,9 +1282,10 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
             // reject verushash with log_e less than -21
             continue;
         }
-        *reinterpret_cast<uint32_t*>(arg.data() + 76) = nonce;
-        auto sha256tFloat { CustomFloat(hashSHA256(hashSHA256(hashSHA256(arg)))) };
-
+        auto verusFloat { CustomFloat(curHash) };
+        *reinterpret_cast<uint32_t*>(header.data() + 76) = nonce;
+        auto sha256tFloat { CustomFloat(hashSHA256(hashSHA256(hashSHA256(header)))) };
+        
         constexpr auto c = CustomFloat(-9, 3306097748); // exp(-6.5)
         if (sha256tFloat < c)
             return false;
@@ -1289,13 +1293,15 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
 
         // compute janushash
         constexpr auto factor { CustomFloat(0, 3006477107) }; // = 0.7 <-- this can be decreased if necessary
-        auto verusFloat { CustomFloat(curHash) };
         auto janushash { verusFloat * pow(sha256tFloat, factor) };
-
         if ( curHash[0] == 0 && (janushash < job.targetV2)){
-            Block b { job.shared->mined.block };
-            b.header = arg;
-            res.success = MineResult::Success { curHash, b };
+            std::span<const uint8_t, 4> s((const uint8_t*)&nonce, 4);
+
+            spdlog::info("header: {}", serialize_hex(header));
+            spdlog::info("SHA256(header): {}", serialize_hex(hashSHA256(hashSHA256(hashSHA256(header)))));
+            spdlog::info("verush(header): {}", serialize_hex(verus_hash(header)));
+            assert(curHash == verus_hash(header));
+            res.success = Verus::Success { curHash, mined.submit(s) };
             return true;
         }
     }

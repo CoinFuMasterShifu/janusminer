@@ -36,11 +36,13 @@ const char *gengetopt_args_info_description = "";
 const char *gengetopt_args_info_help[] = {
   "      --help                   Print help and exit",
   "  -V, --version                Print version and exit",
-  "  -a, --address=WALLETADDRESS  Specify address that is mined to",
   "      --gpus=STRING            Specify GPUs as comma separated list like\n                                 \"0,2,3\". By default all GPUs are used.",
   "  -t, --threads=INT            Number of CPU worker threads, use 0 for hardware\n                                 concurrency.   (default=`0')",
   "  -h, --host=STRING            Host (RPC-Node)  (default=`localhost')",
   "  -p, --port=INT               Port (RPC-Node)  (default=`3000')",
+  "  -a, --address=WALLETADDRESS  Specify address that is mined to (for mining\n                                 directly to node)  (default=`')",
+  "  -u, --user=STRING            Enable stratum protocol and specify username\n                                 (default=`')",
+  "      --password=STRING        Password (for Stratum)  (default=`')",
     0
 };
 
@@ -58,8 +60,6 @@ static int
 cmdline_parser_internal (int argc, char **argv, struct gengetopt_args_info *args_info,
                         struct cmdline_parser_params *params, const char *additional_error);
 
-static int
-cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *prog_name, const char *additional_error);
 
 static char *
 gengetopt_strdup (const char *s);
@@ -69,19 +69,19 @@ void clear_given (struct gengetopt_args_info *args_info)
 {
   args_info->help_given = 0 ;
   args_info->version_given = 0 ;
-  args_info->address_given = 0 ;
   args_info->gpus_given = 0 ;
   args_info->threads_given = 0 ;
   args_info->host_given = 0 ;
   args_info->port_given = 0 ;
+  args_info->address_given = 0 ;
+  args_info->user_given = 0 ;
+  args_info->password_given = 0 ;
 }
 
 static
 void clear_args (struct gengetopt_args_info *args_info)
 {
   FIX_UNUSED (args_info);
-  args_info->address_arg = NULL;
-  args_info->address_orig = NULL;
   args_info->gpus_arg = NULL;
   args_info->gpus_orig = NULL;
   args_info->threads_arg = 0;
@@ -90,6 +90,12 @@ void clear_args (struct gengetopt_args_info *args_info)
   args_info->host_orig = NULL;
   args_info->port_arg = 3000;
   args_info->port_orig = NULL;
+  args_info->address_arg = gengetopt_strdup ("");
+  args_info->address_orig = NULL;
+  args_info->user_arg = gengetopt_strdup ("");
+  args_info->user_orig = NULL;
+  args_info->password_arg = gengetopt_strdup ("");
+  args_info->password_orig = NULL;
   
 }
 
@@ -100,11 +106,13 @@ void init_args_info(struct gengetopt_args_info *args_info)
 
   args_info->help_help = gengetopt_args_info_help[0] ;
   args_info->version_help = gengetopt_args_info_help[1] ;
-  args_info->address_help = gengetopt_args_info_help[2] ;
-  args_info->gpus_help = gengetopt_args_info_help[3] ;
-  args_info->threads_help = gengetopt_args_info_help[4] ;
-  args_info->host_help = gengetopt_args_info_help[5] ;
-  args_info->port_help = gengetopt_args_info_help[6] ;
+  args_info->gpus_help = gengetopt_args_info_help[2] ;
+  args_info->threads_help = gengetopt_args_info_help[3] ;
+  args_info->host_help = gengetopt_args_info_help[4] ;
+  args_info->port_help = gengetopt_args_info_help[5] ;
+  args_info->address_help = gengetopt_args_info_help[6] ;
+  args_info->user_help = gengetopt_args_info_help[7] ;
+  args_info->password_help = gengetopt_args_info_help[8] ;
   
 }
 
@@ -194,14 +202,18 @@ static void
 cmdline_parser_release (struct gengetopt_args_info *args_info)
 {
 
-  free_string_field (&(args_info->address_arg));
-  free_string_field (&(args_info->address_orig));
   free_string_field (&(args_info->gpus_arg));
   free_string_field (&(args_info->gpus_orig));
   free_string_field (&(args_info->threads_orig));
   free_string_field (&(args_info->host_arg));
   free_string_field (&(args_info->host_orig));
   free_string_field (&(args_info->port_orig));
+  free_string_field (&(args_info->address_arg));
+  free_string_field (&(args_info->address_orig));
+  free_string_field (&(args_info->user_arg));
+  free_string_field (&(args_info->user_orig));
+  free_string_field (&(args_info->password_arg));
+  free_string_field (&(args_info->password_orig));
   
   
 
@@ -236,8 +248,6 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
     write_into_file(outfile, "help", 0, 0 );
   if (args_info->version_given)
     write_into_file(outfile, "version", 0, 0 );
-  if (args_info->address_given)
-    write_into_file(outfile, "address", args_info->address_orig, 0);
   if (args_info->gpus_given)
     write_into_file(outfile, "gpus", args_info->gpus_orig, 0);
   if (args_info->threads_given)
@@ -246,6 +256,12 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
     write_into_file(outfile, "host", args_info->host_orig, 0);
   if (args_info->port_given)
     write_into_file(outfile, "port", args_info->port_orig, 0);
+  if (args_info->address_given)
+    write_into_file(outfile, "address", args_info->address_orig, 0);
+  if (args_info->user_given)
+    write_into_file(outfile, "user", args_info->user_orig, 0);
+  if (args_info->password_given)
+    write_into_file(outfile, "password", args_info->password_orig, 0);
   
 
   i = EXIT_SUCCESS;
@@ -341,37 +357,9 @@ cmdline_parser2 (int argc, char **argv, struct gengetopt_args_info *args_info, i
 int
 cmdline_parser_required (struct gengetopt_args_info *args_info, const char *prog_name)
 {
-  int result = EXIT_SUCCESS;
-
-  if (cmdline_parser_required2(args_info, prog_name, 0) > 0)
-    result = EXIT_FAILURE;
-
-  if (result == EXIT_FAILURE)
-    {
-      cmdline_parser_free (args_info);
-      exit (EXIT_FAILURE);
-    }
-  
-  return result;
-}
-
-int
-cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *prog_name, const char *additional_error)
-{
-  int error_occurred = 0;
-  FIX_UNUSED (additional_error);
-
-  /* checks for required options */
-  if (! args_info->address_given)
-    {
-      fprintf (stderr, "%s: '--address' ('-a') option required%s\n", prog_name, (additional_error ? additional_error : ""));
-      error_occurred = 1;
-    }
-  
-  
-  /* checks for dependences among options */
-
-  return error_occurred;
+  FIX_UNUSED (args_info);
+  FIX_UNUSED (prog_name);
+  return EXIT_SUCCESS;
 }
 
 
@@ -532,15 +520,17 @@ cmdline_parser_internal (
       static struct option long_options[] = {
         { "help",	0, NULL, 0 },
         { "version",	0, NULL, 'V' },
-        { "address",	1, NULL, 'a' },
         { "gpus",	1, NULL, 0 },
         { "threads",	1, NULL, 't' },
         { "host",	1, NULL, 'h' },
         { "port",	1, NULL, 'p' },
+        { "address",	1, NULL, 'a' },
+        { "user",	1, NULL, 'u' },
+        { "password",	1, NULL, 0 },
         { 0,  0, 0, 0 }
       };
 
-      c = getopt_long (argc, argv, "Va:t:h:p:", long_options, &option_index);
+      c = getopt_long (argc, argv, "Vt:h:p:a:u:", long_options, &option_index);
 
       if (c == -1) break;	/* Exit from `while (1)' loop.  */
 
@@ -551,18 +541,6 @@ cmdline_parser_internal (
           cmdline_parser_free (&local_args_info);
           exit (EXIT_SUCCESS);
 
-        case 'a':	/* Specify address that is mined to.  */
-        
-        
-          if (update_arg( (void *)&(args_info->address_arg), 
-               &(args_info->address_orig), &(args_info->address_given),
-              &(local_args_info.address_given), optarg, 0, 0, ARG_STRING,
-              check_ambiguity, override, 0, 0,
-              "address", 'a',
-              additional_error))
-            goto failure;
-        
-          break;
         case 't':	/* Number of CPU worker threads, use 0 for hardware concurrency. .  */
         
         
@@ -599,6 +577,30 @@ cmdline_parser_internal (
             goto failure;
         
           break;
+        case 'a':	/* Specify address that is mined to (for mining directly to node).  */
+        
+        
+          if (update_arg( (void *)&(args_info->address_arg), 
+               &(args_info->address_orig), &(args_info->address_given),
+              &(local_args_info.address_given), optarg, 0, "", ARG_STRING,
+              check_ambiguity, override, 0, 0,
+              "address", 'a',
+              additional_error))
+            goto failure;
+        
+          break;
+        case 'u':	/* Enable stratum protocol and specify username.  */
+        
+        
+          if (update_arg( (void *)&(args_info->user_arg), 
+               &(args_info->user_orig), &(args_info->user_given),
+              &(local_args_info.user_given), optarg, 0, "", ARG_STRING,
+              check_ambiguity, override, 0, 0,
+              "user", 'u',
+              additional_error))
+            goto failure;
+        
+          break;
 
         case 0:	/* Long option with no short option */
           if (strcmp (long_options[option_index].name, "help") == 0) {
@@ -621,6 +623,20 @@ cmdline_parser_internal (
               goto failure;
           
           }
+          /* Password (for Stratum).  */
+          else if (strcmp (long_options[option_index].name, "password") == 0)
+          {
+          
+          
+            if (update_arg( (void *)&(args_info->password_arg), 
+                 &(args_info->password_orig), &(args_info->password_given),
+                &(local_args_info.password_given), optarg, 0, "", ARG_STRING,
+                check_ambiguity, override, 0, 0,
+                "password", '-',
+                additional_error))
+              goto failure;
+          
+          }
           
           break;
         case '?':	/* Invalid option.  */
@@ -635,10 +651,7 @@ cmdline_parser_internal (
 
 
 
-  if (check_required)
-    {
-      error_occurred += cmdline_parser_required2 (args_info, argv[0], additional_error);
-    }
+	FIX_UNUSED(check_required);
 
   cmdline_parser_release (&local_args_info);
 

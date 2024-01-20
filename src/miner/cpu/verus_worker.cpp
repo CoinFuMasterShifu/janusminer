@@ -71,12 +71,7 @@ bool Worker::try_mining()
     pool.trace_verus(vt, p->cleanIndex, workerIndex);
     adjust_batch_size(vt);
     if (res.success) {
-        auto& [hash, block] = *res.success;
-        spdlog::info("header: {}", serialize_hex(block.header));
-        spdlog::info("SHA256(header): {}", serialize_hex(hashSHA256(hashSHA256(hashSHA256(block.header)))));
-        spdlog::info("verush(header): {}", serialize_hex(verus_hash(block.header)));
-        assert(hash == verus_hash(block.header));
-        pool.push_janus_mined(block);
+        pool.push_janus_mined(std::move(*res.success));
     }
     return true;
 }
