@@ -74,7 +74,7 @@ Hashrate janusscore(uint64_t verus,uint64_t sha256t){
     if (verus>sha256t || verus == 0) {
         return 0.0;
     }
-    double c{0.001503439192977};
+    double c{0.005};
     return double(sha256t)*(pow(c+double(verus)/double(sha256t),0.3)-pow(c,0.3))/(pow(c+1,0.3)-pow(c,0.3));
 }
 

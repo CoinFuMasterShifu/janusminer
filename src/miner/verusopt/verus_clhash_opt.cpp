@@ -1286,9 +1286,10 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
         *reinterpret_cast<uint32_t*>(header.data() + 76) = nonce;
         auto sha256tFloat { CustomFloat(hashSHA256(hashSHA256(hashSHA256(header)))) };
         
-        constexpr auto c = CustomFloat(-9, 3306097748); // exp(-6.5)
+        constexpr auto c = CustomFloat(-7, 2748779069); // 0.005
         if (sha256tFloat < c)
             return false;
+        
 
 
         // compute janushash
