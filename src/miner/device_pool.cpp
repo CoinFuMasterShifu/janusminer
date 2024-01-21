@@ -54,7 +54,8 @@ void DevicePool::init_connection(const stratum::ConnectionData& cd)
                 std::move(e));
         });
 };
-void DevicePool::init_connection(const NodeConnectionData& cd) {
+void DevicePool::init_connection(const NodeConnectionData& cd)
+{
     spdlog::info("Node RPC is {}:{}", cd.host, cd.port);
     address = cd.address;
     api = std::make_unique<API>(cd.host, cd.port);
@@ -70,12 +71,13 @@ DevicePool::DevicePool(const std::vector<CL::Device>& devices, size_t nVerusWork
     }
 }
 
-Hashrate janusscore(uint64_t verus,uint64_t sha256t){
-    if (verus>sha256t || verus == 0) {
+Hashrate janusscore(uint64_t verus, uint64_t sha256t)
+{
+    if (verus > sha256t || verus == 0) {
         return 0.0;
     }
-    double c{0.005};
-    return double(sha256t)*(pow(c+double(verus)/double(sha256t),0.3)-pow(c,0.3))/(pow(c+1,0.3)-pow(c,0.3));
+    double c { 0.005 };
+    return double(sha256t) * (pow(c + double(verus) / double(sha256t), 0.3) - pow(c, 0.3)) / (pow(c + 1, 0.3) - pow(c, 0.3));
 }
 
 void DevicePool::print_hashrate()
@@ -90,7 +92,6 @@ void DevicePool::print_hashrate()
         hashrates.push_back({ dt->deviceName, hashrate });
     }
 
-
     auto [sumVerus, verusHashrates] = verusPool.hashrates();
 
     // std::string durationstr;
@@ -100,8 +101,6 @@ void DevicePool::print_hashrate()
     // }
     spdlog::info("Total hashrate (GPU): {}/s", Hashrate(sumSha256t).format().to_string());
 
-
-
     for (auto& [name, hr] : hashrates) {
         spdlog::info("   {}: {}/s", name, Hashrate(hr).format().to_string());
     }
@@ -109,7 +108,7 @@ void DevicePool::print_hashrate()
     for (size_t i = 0; i < verusHashrates.size(); ++i) {
         spdlog::info("   Thread#{}: {}/s", i, verusHashrates[i].format().to_string());
     }
-    spdlog::info("Janusscore: {}/s", janusscore(sumVerus.val,sumSha256t).format().to_string());
+    spdlog::info("Janusscore: {}/s", janusscore(sumVerus.val, sumSha256t).format().to_string());
 }
 
 void DevicePool::handle_event(const WorkerResult& wr)
@@ -161,6 +160,8 @@ void DevicePool::set_ignore_below() {
 
 void DevicePool::submit(const Block& b)
 {
+    static size_t rejected { 0 };
+    static size_t accepted { 0 };
     if (!jobStatus.valid_block(b)) {
         spdlog::warn("Found outdated block :(");
         return;
@@ -169,10 +170,12 @@ void DevicePool::submit(const Block& b)
     assert(api);
     auto res { api->submit_block(b) };
     if (res.second == 0) {
-        spdlog::info("💰 #{} Mined block {}.", minedcount, b.height.value());
+        accepted += 1;
+        spdlog::info("💰 #{} Mined block {}, (total accepted {}, rejected {})", minedcount, b.height.value(), accepted, rejected);
         // exit(0);
     } else {
-        spdlog::warn("⚠  #{} Mined block {} rejected: {}", minedcount, b.height.value(), res.first);
+        rejected += 1;
+        spdlog::warn("⚠  #{} Mined block {} rejected: {}, (total accepted {}, rejected {})", minedcount, b.height.value(), res.first, accepted, rejected);
     }
     needsPoll = true;
     assert(stratumConnection);
