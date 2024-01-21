@@ -8,7 +8,7 @@ Copyright (c) 2023 CoinFuMasterShifu, Pumbaa, Timon & Rafiki
 
 ## 📦 What is in the box?
 
-* GPU/CPU Miner for Janushash
+* GPU+CPU Miner for Janushash
 
 ## 💻 System Requirements
 
@@ -59,20 +59,27 @@ Binaries are located in `./build` directory.
 ### General Options
 Parameter | Description
 | ------------- | ------------- |
-|  --help                                              |    Help screen. |
-|  -V, --version                                    |    Print version and exit. |
-|  -a, <br />--address=WALLETADDRESS |    Specify wallet address to mine on. |
-|  --gpus=STRING                             |    Specify GPUs as comma separated list like "0,2,3". <br />By default all GPUs are used.
-|  -t, --threads=INT                            |    Number of CPU worker threads, use 0 for hardware concurrency.   (default='0')
-|  -h, --host=STRING                        |    Host (RPC-Node)  (default='localhost')
-|  -p, --port=INT                                |    Port (RPC-Node)  (default='3000')
+|  --help                                                        |    Help screen. |
+|  -V, --version                                              |	 Print version and exit. |
+|  -a, <br />--address=WALLETADDRESS  |    Specify wallet address to mine on. |
+|  --gpus=STRING                                       |    Specify GPUs as comma separated list like "0,2,3". <br />By default all GPUs are used.
+|  -t, --threads=INT                                      |    Number of CPU worker threads, use 0 for hardware concurrency.   (default='0')
+|  -h, --host=STRING                                  |    Host (RPC-Node / Pool URL)  (default='localhost')
+|  -p, --port=INT                                          |    Port (RPC-Node / Pool PORT)  (default='3000')
+|  -u, --user=STRING           					   |    Enable stratum protocol and specify username ( default='')                                
+|  --password=STRING     							|    Password (for Stratum)  (default='')
+
 
 ### One line example to start mining
+* with restarter:
 `screen -dmS janusminer bash -c "while true; do ~/janusminer-ubuntu22 -a YOUR_WALLET_ADDRESS -h YOU_NODE_IP -p YOUR_NODE_PORT; done"`
+
+* without restarter:
+`screen -dmS janusminer ~/janusminer-ubuntu22 -a YOUR_WALLET_ADDRESS -h YOU_NODE_IP -p YOUR_NODE_PORT`
 
 ### Custom miner for HiveOS
 To use it you need to select “Custom” miner when you create Flight Sheet and paste the direct link on HiveOS build (e.g. janusminer_hiveos-0.0.1.tgz) from Releases into "Installation URL'".
 
-#### Fligh Sheet example for HiveOS
+#### Flight Sheet example for HiveOS
 <img src="doc/img/hiveos_fs_example.png" style="width:500px;"/>
 
