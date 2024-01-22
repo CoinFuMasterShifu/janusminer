@@ -60,7 +60,7 @@ std::pair<std::string, int> API::submit_block(const Block& mt)
 
 std::optional<Block> API::get_mining(const Address& a)
 {
-    std::string url = "/chain/mine/" + a.to_string();
+    std::string url = "/chain/mine/" + a.to_string() +"/log";
         try {
             std::string out = http_get(url);
 
