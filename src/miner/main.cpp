@@ -28,21 +28,21 @@ int process(gengetopt_args_info& ai)
         if (ai.gpus_given) {
             gpus.assign(ai.gpus_arg);
         }
-        if (ai.user_given && std::strlen(ai.user_arg) > 0) { // stratum
-            if (ai.address_given)
-                spdlog::warn("Address parameter '-a' is ignored because stratum mining is enabled via '-u'");
+        if (ai.address_given && strlen(ai.address_arg) > 0) {
+            if (ai.user_given && strlen(ai.user_arg) > 0)
+                spdlog::warn("Stratum parameter '-u' is ignored because direct-to-node mining is enabled via '-a'");
+            start_miner(gpus, threads,
+                NodeConnectionData {
+                    .host { host },
+                    .port = port,
+                    .address { ai.address_arg } });
+        } else { // stratum
             start_miner(gpus, threads,
                 stratum::ConnectionData {
                     .host { ai.host_arg },
                     .port { std::to_string(ai.port_arg) },
                     .user { ai.user_arg },
                     .pass { ai.password_arg } });
-        } else {
-            start_miner(gpus, threads,
-                NodeConnectionData {
-                    .host { host },
-                    .port = port,
-                    .address { ai.address_arg } });
         }
     } catch (std::runtime_error& e) {
         spdlog::error("{}", e.what());
