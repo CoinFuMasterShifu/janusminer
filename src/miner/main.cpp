@@ -28,16 +28,15 @@ int process(gengetopt_args_info& ai)
         if (ai.gpus_given) {
             gpus.assign(ai.gpus_arg);
         }
-        if (ai.user_given) {// stratum
-            if (ai.address_given) 
+        if (ai.user_given && std::strlen(ai.user_arg) > 0) { // stratum
+            if (ai.address_given)
                 spdlog::warn("Address parameter '-a' is ignored because stratum mining is enabled via '-u'");
-            start_miner(gpus, threads, 
-                    stratum::ConnectionData{
-                    .host{ai.host_arg},
-                    .port{std::to_string(ai.port_arg)},
-                    .user{ai.user_arg},
-                    .pass{ai.password_arg}
-                    });
+            start_miner(gpus, threads,
+                stratum::ConnectionData {
+                    .host { ai.host_arg },
+                    .port { std::to_string(ai.port_arg) },
+                    .user { ai.user_arg },
+                    .pass { ai.password_arg } });
         } else {
             start_miner(gpus, threads,
                 NodeConnectionData {
