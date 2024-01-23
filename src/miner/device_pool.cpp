@@ -178,11 +178,11 @@ void DevicePool::submit(const Block& b)
         spdlog::warn("⚠  #{} Mined block {} rejected: {}, (total accepted {}, rejected {})", minedcount, b.height.value(), res.first, accepted, rejected);
     }
     needsPoll = true;
-    assert(stratumConnection);
 };
 
 void DevicePool::submit(const stratum::Submission& s)
 {
+    assert(stratumConnection);
     stratumConnection->submit(s, stratumConnectionData.get_connection_id());
 }
 
