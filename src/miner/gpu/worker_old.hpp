@@ -1,5 +1,6 @@
 #pragma once
 #include "cl_function.hxx"
+#include "c_constant.hpp"
 #include "cl_helper.hpp"
 #include "kernel.hpp"
 #include "mine_job.hpp"
@@ -28,7 +29,9 @@ class MinerDevice {
         try {
             program.build(
                 "-cl-std=CL2.0 -DVECT_SIZE=2 -DDGST_R0=3 -DDGST_R1=7 -DDGST_R2=2 "
-                "-DDGST_R3=6 -DDGST_ELEM=8 -DKERNEL_STATIC");
+                "-DDGST_R3=6 -DDGST_ELEM=8 -DKERNEL_STATIC"
+                "-DC_CONSTANT=" C_CONSTANT_STR
+                );
             return program;
         } catch (cl::BuildError& e) {
             auto logs { e.getBuildLog() };
@@ -117,10 +120,10 @@ private:
         mine_fun_triple_sha;
 };
 
-class DevicePool;
+class MiningCoordinator;
 class DeviceWorker {
 public:
-    DeviceWorker(size_t deviceId, const CL::Device& device, DevicePool& pool)
+    DeviceWorker(size_t deviceId, const CL::Device& device, MiningCoordinator& pool)
         : deviceId(deviceId)
         , pool(pool)
         , miner(device)
@@ -195,7 +198,7 @@ private:
     uint32_t randOffset { 0 };
 
     size_t deviceId;
-    DevicePool& pool;
+    MiningCoordinator& pool;
     MinerDevice miner;
 
     // external variables

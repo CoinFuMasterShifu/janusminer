@@ -135,6 +135,19 @@ struct CLFunction {
             }
         }
         template <size_t N>
+        void memzero(CL::CommandQueue queue, size_t offset, size_t bytes)
+        {
+            using V=OUT_TYPE<N>;
+            static_assert(CL::VectorChecker<V>::isVector, "This method is only for POD std::vector types");
+            std::optional<clb<V>>& b { std::get<N>(outBuffers) };
+            
+            uint8_t p{0};
+            assert(queue.enqueueFillBuffer(b.value(),p,offset,bytes) == CL_SUCCESS);
+            // assert(clEnqueueFillBuffer(queue.get(),b.value().get(),&p,1,offset,bytes,0,nullptr,nullptr)==CL_SUCCESS);
+        }
+
+
+        template <size_t N>
         [[nodiscard]] size_t override_reserve_outvector(size_t elements)
         {
             using V=OUT_TYPE<N>;

@@ -1165,16 +1165,6 @@ namespace {
     }
 } // namespace
 
-inline bool MinerJob::ignore_index(uint32_t i, uint32_t threshold) const
-{
-    return ((*(vec_begin + i)) < threshold);
-}
-inline TargetV1 MinerJob::target(uint32_t i) const
-{
-    uint32_t v { *(vec_begin + i) };
-    return hton32(((~v) & 0xFF000000u) | (v & 0x00FFFFFFu));
-}
-
 JanusMinerOpt::JanusMinerOpt()
 {
 }
@@ -1232,11 +1222,15 @@ void JanusMinerOpt::check_set_header(const std::array<uint8_t, 76>& newheader)
     memset(hasherrefresh + keyRefreshsize, 0, keysize - keyRefreshsize);
 }
 
-inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32_t threshold)
+inline bool JanusMinerOpt::mine_job(MineResult& res, const CandidateBatch& job, const uint32_t threshold)
 {
 
     const auto& mined { job.shared->mined };
     check_set_header(mined.header());
+
+    std::array<uint32_t, 8> dummy;
+    std::fill(dummy.begin(), dummy.end(), 0xFFFFFFFF);
+    HashView dummySha256tHash(reinterpret_cast<uint8_t*>(dummy.data()));
 
     alignas(32) Hash curHash;
 
@@ -1246,77 +1240,89 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const MinerJob& job, uint32
     unsigned char* const curBuf = vh.curBuf;
 
     uint32_t& nonce = *reinterpret_cast<uint32_t*>(curBuf + 32 + (76 - 64));
-    const uint32_t end_index(job.end_index());
-    uint32_t i = job.begin_index();
-    assert(i < end_index);
-    for (; i < end_index; ++i) {
-        res.total += 1;
-        if (job.ignore_index(i, threshold))
-            continue;
-        res.processed += 1;
-        nonce = htobe32(i + job.nonceOffset);
 
-        // prepare the buffer
-        *(u128*)(curBuf + 32 + 16) = *(u128*)(curBuf);
+    size_t offset { job.offset };
+    size_t len { job.len };
 
-        // run verusclhash on the buffer
-        __m128i acc = __verusclmulwithoutreduction64alignedrepeat_sv2_1(
-            hashKey, (const __m128i*)curBuf, keyMask, pMoveScratch);
-        acc = _mm_xor_si128(acc, lazyLengthHash(1024, 64));
-        const uint64_t intermediate = precompReduction64(acc);
+    for (auto& span : job.resultSpans.spans) {
+        const auto jBound { std::min(offset + len, span.size()) };
+        for (size_t j = offset; j < jBound; ++j) {
+            nonce = hton32(span[j].nonce());
+            uint32_t hashStart = span[j].hashStart();
+            assert(hashStart != 0);
+            res.total += 1;
+            if (hashStart > threshold)
+                continue;
+            res.processed += 1;
 
-        *(uint64_t*)(curBuf + 32 + 16) = intermediate;
-        *(uint64_t*)(curBuf + 32 + 16 + 8) = intermediate;
+            // prepare the buffer
+            *(u128*)(curBuf + 32 + 16) = *(u128*)(curBuf);
 
-        haraka512_keyed_local(curHash.data(), curBuf,
-            hashKey + (intermediate & keyMask16));
+            // run verusclhash on the buffer
+            __m128i acc = __verusclmulwithoutreduction64alignedrepeat_sv2_1(
+                hashKey, (const __m128i*)curBuf, keyMask, pMoveScratch);
+            acc = _mm_xor_si128(acc, lazyLengthHash(1024, 64));
+            const uint64_t intermediate = precompReduction64(acc);
 
-        // refresh the key
-        fixupkey(pMoveScratch);
-        if (!job.target(i).compatible(curHash))
-            continue;
-        //
-        // now exact test
-        //
-        if (!(curHash < CustomFloat(-30, 3496838790))) {
-            // reject verushash with log_e less than -21
-            continue;
+            *(uint64_t*)(curBuf + 32 + 16) = intermediate;
+            *(uint64_t*)(curBuf + 32 + 16 + 8) = intermediate;
+
+            haraka512_keyed_local(curHash.data(), curBuf,
+                hashKey + (intermediate & keyMask16));
+
+            // refresh the key
+            fixupkey(pMoveScratch);
+
+            //
+            // now exact test
+            //
+            dummy[0] = hton32(hashStart);
+            auto verusFloat { CustomFloat(curHash) };
+            *reinterpret_cast<uint32_t*>(header.data() + 76) = nonce;
+            // auto sha256tFloat { CustomFloat(hashSHA256(hashSHA256(hashSHA256(header)))) };
+            auto sha256tFloat { CustomFloat(dummySha256tHash) };
+
+            // auto h2 = double(hashStart) / double(0xFFFFFFFF);
+            // spdlog::info("janushash(header): {} {} {}", sha256tFloat.to_double(), h2, threshold);
+            // compute janushash
+            constexpr auto factor { CustomFloat(0, 3006477107) };
+            auto janushash { verusFloat * pow(sha256tFloat, factor) };
+            if (janushash < job.targetV2) {
+                std::span<const uint8_t, 4> s((const uint8_t*)&nonce, 4);
+
+                spdlog::info("janushash(header): {}< {}", janushash.to_double(), 1 / job.targetV2.difficulty());
+                spdlog::info("header: {}", serialize_hex(header));
+                spdlog::info("sha256thash: {}", serialize_hex(dummySha256tHash));
+                auto hs { hashSHA256(hashSHA256(hashSHA256(header))) };
+                spdlog::info("SHA256(header): {}", serialize_hex(hs));
+                spdlog::info("SHA256tFloat: {}", sha256tFloat.to_double());
+                CustomFloat hsf { hs };
+                spdlog::info("SHA256tFloat2: {}", hsf.to_double());
+                spdlog::info("verush(header): {}", serialize_hex(verus_hash(header)));
+                spdlog::info("verusFloat: {}", verusFloat.to_double());
+                spdlog::info("j {}, {}", j, span[j].nonce());
+                assert(curHash == verus_hash(header));
+                res.success = Verus::Success { curHash, mined.submit(s) };
+                return true;
+            }
         }
-        auto verusFloat { CustomFloat(curHash) };
-        *reinterpret_cast<uint32_t*>(header.data() + 76) = nonce;
-        auto sha256tFloat { CustomFloat(hashSHA256(hashSHA256(hashSHA256(header)))) };
-        
-        constexpr auto c = CustomFloat(-7, 2748779069); // 0.005
-        if (sha256tFloat < c)
-            return false;
-        
-
-
-        // compute janushash
-        constexpr auto factor { CustomFloat(0, 3006477107) }; // = 0.7 <-- this can be decreased if necessary
-        auto janushash { verusFloat * pow(sha256tFloat, factor) };
-        if ( curHash[0] == 0 && (janushash < job.targetV2)){
-            std::span<const uint8_t, 4> s((const uint8_t*)&nonce, 4);
-
-            spdlog::info("header: {}", serialize_hex(header));
-            spdlog::info("SHA256(header): {}", serialize_hex(hashSHA256(hashSHA256(hashSHA256(header)))));
-            spdlog::info("verush(header): {}", serialize_hex(verus_hash(header)));
-            assert(curHash == verus_hash(header));
-            res.success = Verus::Success { curHash, mined.submit(s) };
-            return true;
-        }
+        len -= jBound - offset;
+        if (offset > span.size())
+            offset = 0;
+        else
+            offset -= span.size();
     }
     return false;
 }
 
-MineResult JanusMinerOpt::mine(const std::vector<MinerJob>& jobs, uint32_t threshold)
+MineResult JanusMinerOpt::mine(const Verus::WorkerJob& j)
 {
     using namespace std::chrono;
     auto start = steady_clock::now();
     MineResult res;
 
-    for (auto& job : jobs) {
-        if (mine_job(res, job, threshold))
+    for (auto& batch : j.batches) {
+        if (mine_job(res, batch, batch.scaled_threshold(j.mineProportion)))
             break;
     }
     assert(res.total != 0);

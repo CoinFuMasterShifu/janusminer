@@ -45,8 +45,6 @@ struct VerusTiming {
     std::chrono::steady_clock::duration duration;
     size_t total;
     size_t processed;
-    double proportionOfRequested;
-    Verus::MineThreshold threshold;
 };
 
 class AverageEstimator {

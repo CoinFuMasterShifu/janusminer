@@ -9,64 +9,48 @@
 #include <vector>
 
 namespace Verus {
-struct PoolJob {
+struct QueuedJob {
     const TripleSha::MinedValues mined;
-    TargetV2 target() const;
+    size_t clean_index() const { return mined.clean_index(); }
+    TargetV2 target() const { return mined.target(); }
 };
 
-struct MineThreshold {
-    double targetProportion { 1 };
-    uint32_t minThreshold { 0 };
-    bool operator==(const MineThreshold&) const = default;
-};
-struct MinerJob {
-    using V = std::vector<uint32_t>;
-    uint32_t end_index() const { return job_end - vec_begin; }
-    uint32_t begin_index() const { return job_begin - vec_begin; }
-    TargetV1 target(uint32_t i) const;
-    bool ignore_index(uint32_t i, uint32_t threshold) const;
-    std::shared_ptr<PoolJob> shared;
-    uint32_t nonceOffset;
+
+struct CandidateBatch {
+    uint32_t scaled_threshold(double d) const{
+        return shared->mined.scaled_threshold(d);
+    }
+    std::shared_ptr<QueuedJob> shared;
     TargetV2 targetV2;
-    V::const_iterator vec_begin;
-    V::const_iterator job_begin;
-    V::const_iterator job_end;
+    const sha256t_results::spans& resultSpans;
+    size_t offset;
+    size_t len;
 };
 
 struct WorkerJob {
-    std::vector<Verus::MinerJob> jobs;
-    Verus::MineThreshold threshold;
-    double proportionOfWanted;
+    std::vector<Verus::CandidateBatch> batches;
+    double mineProportion;
     size_t total;
     size_t cleanIndex;
 };
 
 class JobQueue {
-    struct ActiveJob {
-        size_t cursor { 0 };
-    };
-
 public:
-    void push(PoolJob j);
+    void push(QueuedJob j);
     [[nodiscard]] bool empty() const { return queue.empty(); }
-    std::optional<Verus::WorkerJob> pop(size_t N, Verus::MineThreshold);
+    std::optional<Verus::WorkerJob> pop(size_t N);
     bool is_fresh() const { return fresh; }
     void clear(size_t newCleanIndex);
-    // auto get_threshold() const {return minThreshold;}
-    void set_job_accept(size_t jai) { jobAcceptIndex = jai; }
-    auto get_clean_index() const { return cleanIndex; }
-    bool compabitlbe(const Verus::WorkerJob&);
+    void set_hashrate(size_t hr) { hashrate = hr; }
     [[nodiscard]] auto watermark() const { return _watermark; }
 
 private:
-    void drop();
-
-private:
+    double mine_proportion();
     bool fresh = true;
-    size_t jobAcceptIndex { 0 };
+    std::optional<size_t> hashrate;
     size_t cleanIndex { 0 };
     size_t cursor { 0 };
-    std::queue<std::shared_ptr<PoolJob>> queue;
+    std::queue<std::shared_ptr<QueuedJob>> queue;
     size_t _watermark { 0 };
 };
 
@@ -74,4 +58,5 @@ struct Success {
     Hash hash;
     std::variant<Block, stratum::Submission> submission;
 };
+
 }

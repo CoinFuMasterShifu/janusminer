@@ -4,30 +4,30 @@
 #include "cpu/verus_worker.hpp"
 #include "helpers.hpp"
 
-std::optional<StratumJobGenerator> StratumConnectionData::get_job()
+std::optional<StratumGeneratorArgs> StratumConnectionData::generator_args()
 {
     if (!jobdata._difficulty || !_notify || !_subscription)
         return {};
-    return StratumJobGenerator { jobdata, *_notify, *_subscription };
+    return StratumGeneratorArgs { jobdata, *_notify, *_subscription };
 }
 
-std::optional<StratumJobGenerator> StratumConnectionData::update(const stratum::Mining_Notify& n)
+std::optional<StratumGeneratorArgs> StratumConnectionData::update(const stratum::Mining_Notify& n)
 {
     if (n.clean) {
-        jobdata.cleanId++;
+        jobdata.cleanIndex++;
     }
     jobdata._extranonce = std::make_shared<std::atomic<uint32_t>>(0);
     _notify = n;
-    return get_job();
+    return generator_args();
 }
 
-std::optional<StratumJobGenerator> StratumConnectionData::update(const stratum::Mining_SetDifficulty& d)
+std::optional<StratumGeneratorArgs> StratumConnectionData::update(const stratum::Mining_SetDifficulty& d)
 {
     if (jobdata._difficulty) {
         *jobdata._difficulty = d.difficulty;
     } else {
         jobdata._difficulty = std::make_shared<std::atomic<double>>(d.difficulty);
-        return get_job();
+        return generator_args();
     }
     return {};
 }
@@ -37,12 +37,12 @@ void StratumConnectionData::update(const stratum::Subscription& s)
     _subscription = s;
 }
 
-void DevicePool::notify_mined_triple_sha(TripleSha::MinedValues j)
+void MiningCoordinator::notify_mined_triple_sha(TripleSha::MinedValues j)
 {
     push_event(std::move(j));
 }
 
-void DevicePool::init_connection(const stratum::ConnectionData& cd)
+void MiningCoordinator::init_connection(const stratum::ConnectionData& cd)
 {
     spdlog::info("Stratum mode enabled, host is {}:{}", cd.host, cd.port);
     stratumConnection = std::make_unique<stratum::ConnectionServer>(
@@ -54,21 +54,19 @@ void DevicePool::init_connection(const stratum::ConnectionData& cd)
                 std::move(e));
         });
 };
-void DevicePool::init_connection(const NodeConnectionData& cd)
+void MiningCoordinator::init_connection(const NodeConnectionData& cd)
 {
     spdlog::info("Node RPC is {}:{}", cd.host, cd.port);
     address = cd.address;
     api = std::make_unique<API>(cd.host, cd.port);
 };
-DevicePool::DevicePool(const std::vector<CL::Device>& devices, size_t nVerusWorkers, std::variant<stratum::ConnectionData, NodeConnectionData> connectionData)
-    : verusPool(*this, st, nVerusWorkers)
+MiningCoordinator::MiningCoordinator(const std::vector<CL::Device>& devices, size_t nVerusThreads, std::variant<stratum::ConnectionData, NodeConnectionData> connectionData)
+    : sha256tHasher(devices, [&](TripleSha::MinedValues mined) {
+        push_event(std::move(mined));
+    })
+    , verusPool(*this, st, nVerusThreads)
 {
     std::visit([&](auto& d) { init_connection(d); }, connectionData);
-
-    for (size_t i = 0; i < devices.size(); ++i) {
-        auto& d { devices[i] };
-        workers.push_back(std::make_unique<DeviceWorker>(i, d, *this));
-    }
 }
 
 Hashrate janusscore(uint64_t verus, uint64_t sha256t)
@@ -76,21 +74,13 @@ Hashrate janusscore(uint64_t verus, uint64_t sha256t)
     if (verus > sha256t || verus == 0) {
         return 0.0;
     }
-    double c { 0.005 };
+    double c { double(C_CONSTANT)/double(0xFFFFFFFF) };
     return double(sha256t) * (pow(c + double(verus) / double(sha256t), 0.3) - pow(c, 0.3)) / (pow(c + 1, 0.3) - pow(c, 0.3));
 }
 
-void DevicePool::print_hashrate()
+void MiningCoordinator::print_hashrate()
 {
-    std::vector<std::pair<std::string, uint64_t>> hashrates;
-    uint64_t sum { 0 };
-    uint64_t sumSha256t { 0 };
-    for (auto& dt : workers) {
-        auto hashrate = dt->get_hashrate();
-        sum += hashrate;
-        sumSha256t += hashrate;
-        hashrates.push_back({ dt->deviceName, hashrate });
-    }
+    auto [sumSha256t, sha256tHashrates] = sha256tHasher.hashrates();
 
     auto [sumVerus, verusHashrates] = verusPool.hashrates();
 
@@ -101,7 +91,7 @@ void DevicePool::print_hashrate()
     // }
     spdlog::info("Total hashrate (GPU): {}/s", Hashrate(sumSha256t).format().to_string());
 
-    for (auto& [name, hr] : hashrates) {
+    for (auto& [name, hr] : sha256tHashrates) {
         spdlog::info("   {}: {}/s", name, Hashrate(hr).format().to_string());
     }
     spdlog::info("Total hashrate (CPU): {}/s", sumVerus.format().to_string());
@@ -111,44 +101,44 @@ void DevicePool::print_hashrate()
     spdlog::info("Janusscore: {}/s", janusscore(sumVerus.val, sumSha256t).format().to_string());
 }
 
-void DevicePool::handle_event(const WorkerResult& wr)
+void MiningCoordinator::handle_event(const WorkerResult& wr)
 {
-    verusPool.push_job(Verus::PoolJob { .mined { std::move(wr) } });
+    verusPool.push_job(Verus::QueuedJob { .mined { std::move(wr) } });
 }
 
-void DevicePool::handle_event(OnJanusMined&& e)
+void MiningCoordinator::handle_event(OnJanusMined&& e)
 {
     std::visit([&](auto&& submission) { submit(std::move(submission)); }, std::move(e.submission));
 }
 
-void DevicePool::handle_event(StratumNotify&& n)
+void MiningCoordinator::handle_event(StratumNotify&& n)
 {
     if (auto j { stratumConnectionData.update(n) }; j.has_value())
-        assign_work(std::move(*j));
+        assign_work(*j);
 }
 
-void DevicePool::handle_event(StratumSetDiff&& sd)
+void MiningCoordinator::handle_event(StratumSetDiff&& sd)
 {
     if (auto j { stratumConnectionData.update(sd) }; j.has_value())
-        assign_work(std::move(*j));
+        assign_work(*j);
 }
 
-void DevicePool::handle_event(stratum::ConnectionStart&& cs)
+void MiningCoordinator::handle_event(stratum::ConnectionStart&& cs)
 {
     stratumConnectionData.clear(cs.connectionId);
 }
 
-void DevicePool::handle_event(stratum::ConnectionEnd&&)
+void MiningCoordinator::handle_event(stratum::ConnectionEnd&&)
 {
     stratumConnectionData.clear();
 }
 
-void DevicePool::handle_event(stratum::Subscription&& s)
+void MiningCoordinator::handle_event(stratum::Subscription&& s)
 {
     stratumConnectionData.update(std::move(s));
 };
 
-void DevicePool::set_ignore_below() {
+void MiningCoordinator::set_ignore_below() {
     // uint32_t ignoreBelow { bisecter->get_candidate() };
     // rateWatcher.reset();
     // verusTunedCounter = 0;
@@ -158,11 +148,11 @@ void DevicePool::set_ignore_below() {
     // }
 };
 
-void DevicePool::submit(const Block& b)
+void MiningCoordinator::submit(const Block& b)
 {
     static size_t rejected { 0 };
     static size_t accepted { 0 };
-    if (!jobStatus.valid_block(b)) {
+    if (b.header.prevhash() != prevHash) {
         spdlog::warn("Found outdated block :(");
         return;
     }
@@ -180,61 +170,68 @@ void DevicePool::submit(const Block& b)
     needsPoll = true;
 };
 
-void DevicePool::submit(const stratum::Submission& s)
+void MiningCoordinator::submit(const stratum::Submission& s)
 {
     assert(stratumConnection);
     stratumConnection->submit(s, stratumConnectionData.get_connection_id());
 }
 
-void DevicePool::poll()
+void MiningCoordinator::poll()
 {
     if (!api)
         return;
     needsPoll = false;
     nextPoll = std::chrono::steady_clock::now() + pollInterval;
     auto block = api->get_mining(address.value());
-    if (block)
+    if (block) {
         assign_work(*block);
-    else
+    } else
         stop_mining();
 }
 
-void DevicePool::assign_work(const Block& b)
+void MiningCoordinator::assign_work(const Block& b)
 {
-    bool clean = jobStatus.push_block(b);
+    bool clean = false;
+    auto ph { b.header.prevhash() };
+    if (prevHash != ph) {
+        prevHash = ph;
+        clean = true;
+        ++cleanIndex;
+    }
     if (clean) {
-        verusPool.clean(b.header.target_v2());
+        verusPool.clean(cleanIndex);
     }
     MineJob mj {
         .block { b },
-        .t { b.header.target(b.height) },
-        .cleanIndex = verusPool.get_clean_index(),
+        .t { b.header.target_v2() },
+        .cleanIndex = cleanIndex,
     };
-    if (task.has_value() && b.header == task->header)
+    if (clean) {
+        spdlog::info("Difficulty {}", mj.t.difficulty());
+    }
+    if (currentHeader == b.header)
         return;
-    blockSeed = randuint32();
-    task = b;
-    for (auto& w : workers)
-        w->set_job(mj);
+    currentHeader = b.header;
+
+    sha256tHasher.set_work(mj);
 }
 
-void DevicePool::assign_work(StratumJobGenerator&& sj)
+void MiningCoordinator::assign_work(StratumGeneratorArgs& sj)
 {
-    if (sj.is_clean()) {
-        verusPool.clean(sj.target());
+    if (sj.n.clean) {
+        cleanIndex = sj.base.cleanIndex;
+        verusPool.clean(cleanIndex);
     }
-    for (auto& w : workers)
-        w->set_job(sj);
-};
+    sha256tHasher.set_work(sj);
+}
 
-void DevicePool::stop_mining()
+void MiningCoordinator::stop_mining()
 {
-    for (auto& w : workers)
-        w->stop_mining();
+    sha256tHasher.stop_mining();
     verusPool.stop_mining();
 };
 
-void DevicePool::run()
+void MiningCoordinator::run()
 {
     using namespace std::literals::chrono_literals;
     using namespace std::chrono;
@@ -286,3 +283,7 @@ void DevicePool::run()
     }
     std::cout << "End" << std::endl;
 }
+
+void MiningCoordinator::set_hashrate(Hashrate hashrate){
+    sha256tHasher.update_verushashrate(hashrate);
+};

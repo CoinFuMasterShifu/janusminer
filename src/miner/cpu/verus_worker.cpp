@@ -21,23 +21,11 @@ Worker::Worker(size_t index, VerusPool& pool)
 
 void Worker::adjust_batch_size(const VerusTiming& t)
 {
-    assert(t.proportionOfRequested != 0);
-    auto tt { t.duration / t.proportionOfRequested };
-
-    double factor;
-    if (tt > 150ms) {
-        factor = 100ms/tt;
-        return;
-    }else if (tt< 50ms){
-        factor = 120ms/tt;
-    }else if (tt < 100ms){
-        factor = 110ms/tt;
-    }else{
-        return;
-    }
-    // auto prev{batchSize};
-    batchSize *= factor;
-    // spdlog::error("scaling batchSize {}*{} -> {}", prev,factor,batchSize);
+    if (t.processed < 100 && t.duration<10ms) 
+        batchSize *= 100;
+    else
+        batchSize = t.processed*(100.0ms/t.duration);
+    // spdlog::error("scaling batchSize {} ms", t.duration/1.0ms); //TODO
 };
 
 bool Worker::try_mining()
@@ -46,14 +34,12 @@ bool Worker::try_mining()
     if (!p)
         return false;
 
-    auto res { miner.mine(p->jobs, p->threshold.minThreshold) };
+    auto res { miner.mine(*p) };
     assert(res.total != 0);
     VerusTiming vt {
         .duration { res.duration },
         .total = res.total,
         .processed = res.processed,
-        .proportionOfRequested = p->proportionOfWanted * res.total / p->total,
-        .threshold = p->threshold
     };
 
     { // update hashate info
@@ -67,8 +53,8 @@ bool Worker::try_mining()
         hashrateState->hashes += res.processed;
     }
 
-    trace_log().debug("[VERUS/MINED] {} of {}, {}/{} in {}ms", res.processed, res.total, double(res.processed) / res.total, vt.threshold.targetProportion, duration_cast<milliseconds>(vt.duration).count());
-    pool.trace_verus(vt, p->cleanIndex, workerIndex);
+    // trace_log().debug("[VERUS/MINED] {} of {}, {}/{} in {}ms", res.processed, res.total, double(res.processed) / res.total, vt.threshold.targetProportion, duration_cast<milliseconds>(vt.duration).count());
+    pool.trace_verus(vt, workerIndex);
     adjust_batch_size(vt);
     if (res.success) {
         pool.push_janus_mined(std::move(*res.success));

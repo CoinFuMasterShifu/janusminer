@@ -17,7 +17,7 @@ std::array<std::remove_cv_t<T>, N> from_span(const std::span<T, N> s)
 struct StratumJobDataBase {
     std::shared_ptr<std::atomic<double>> _difficulty;
     std::shared_ptr<std::atomic<uint32_t>> _extranonce;
-    size_t cleanId { 0 };
+    size_t cleanIndex { 0 };
     size_t connectionId { 0 };
 };
 
@@ -28,19 +28,27 @@ struct StratumJobData : public StratumJobDataBase {
 
 class StratumConnectionData;
 class StratumJob;
+class StratumJobGenerator;
+struct StratumGeneratorArgs {
+    StratumJobDataBase& base;
+    stratum::Mining_Notify& n;
+    stratum::Subscription& s;
+    using generator_t = StratumJobGenerator;
+};
 class StratumJobGenerator {
     friend class StratumConnectionData;
     std::shared_ptr<StratumJobData> data;
 
 protected:
-    StratumJobGenerator(StratumJobDataBase base, stratum::Mining_Notify n, stratum::Subscription s)
-        : data { std::make_shared<StratumJobData>(base, n, s) }
-    {
-    }
 
     Hash gen_merkle_root(std::vector<uint8_t>) const;
 
 public:
+    StratumJobGenerator(StratumGeneratorArgs args)
+        : data { std::make_shared<StratumJobData>(args.base, args.n, args.s) }
+    {
+    }
+    size_t clean_index() const { return data->cleanIndex; }
     StratumJob generate_job() const;
     std::shared_ptr<std::atomic<double>> get_difficulty() const
     {
@@ -58,6 +66,7 @@ public:
 
 class StratumJob {
     std::string _jobId;
+    size_t cleanIndex;
     TargetV2 _target;
     std::shared_ptr<std::atomic<double>> _difficulty;
     std::vector<uint8_t> _extra2;
@@ -80,9 +89,11 @@ public:
             .nonce { from_span(nonce) }
         };
     }
+    size_t clean_index() const { return cleanIndex; }
 
     StratumJob(const StratumJobGenerator& stratumJob)
         : _jobId(stratumJob.job_id())
+        , cleanIndex(stratumJob.clean_index())
         , _target(stratumJob.target())
         , _difficulty(stratumJob.get_difficulty())
         , _extra2(stratumJob.gen_extra2())

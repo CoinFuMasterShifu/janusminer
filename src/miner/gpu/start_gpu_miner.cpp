@@ -1,6 +1,6 @@
 #include "device_pool.hpp"
 #include "gpu/cl_function.hxx"
-#include "gpu/worker.hpp"
+#include "gpu/opencl_hasher.hpp"
 #include "helpers.hpp"
 #include "spdlog/spdlog.h"
 #include <algorithm>
@@ -15,6 +15,7 @@
 #include <span>
 #include <thread>
 #include <vector>
+#include <utility>
 
 using namespace std;
 auto all_gpu_devices()
@@ -28,17 +29,6 @@ auto all_gpu_devices()
     return v;
 }
 
-auto read_file(std::string path)
-{
-    std::vector<char> v;
-    if (FILE* fp = fopen(path.c_str(), "r")) {
-        char buf[1024];
-        while (size_t len = fread(buf, 1, sizeof(buf), fp))
-            v.insert(v.end(), buf, buf + len);
-        fclose(fp);
-    }
-    return v;
-}
 
 [[nodiscard]] std::set<uint32_t> parse_gpus(std::string gpus)
 {
@@ -99,6 +89,6 @@ int start_miner(std::string gpus, size_t threads, std::variant<stratum::Connecti
     }
     cout << "Using " << threads << " CPU threads for Verushash" << endl;
 
-    DevicePool(dv, threads, connectionData).run();
+    MiningCoordinator(dv, threads, connectionData).run();
     return 0;
 }

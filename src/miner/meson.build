@@ -9,14 +9,6 @@ cpp_args = ['-msse4.1']
 # if get_option('enable-gpu-miner') == true
 
 kernel_files = files(
-  './gpu/third_party/hashcat/inc_vendor.h',
-  './gpu/third_party/hashcat/inc_types.h',
-  './gpu/third_party/hashcat/inc_platform.h',
-  './gpu/third_party/hashcat/inc_common.h',
-  './gpu/third_party/hashcat/inc_hash_sha256.h',
-  './gpu/third_party/hashcat/inc_platform.cl',
-  './gpu/third_party/hashcat/inc_common.cl',
-  './gpu/third_party/hashcat/inc_hash_sha256.cl',
   './gpu/kernel.cl',
   )
 if get_option('opencl-legacy') == true
@@ -30,11 +22,39 @@ configure_file(input : 'gpu/kernel.hpp.in',
   configuration : conf_data)
 gpusrc = [
   './gpu/start_gpu_miner.cpp',
-  './gpu/worker.cpp'
+  './gpu/opencl_hasher.cpp'
   ]
 opencl_dep = dependency('OpenCL')
 dep = [ 
   opencl_dep]
+
+ executable('m2', vcs_dep, 
+   [
+     './api_call.cpp', 
+     './cmdline/cmdline.cpp', 
+     './device_pool.cpp', 
+     './cpu/verus_worker.cpp', 
+     './cpu/verus_job.cpp', 
+     './verus_pool.cpp', 
+     './log/trace.cpp', 
+'stratum/messages.cpp',
+'stratum/connection.cpp',
+'stratum/connection_server.cpp',
+'./stratum/job.cpp',
+     './mine_job.cpp', 
+     './main2.cpp', 
+     gpusrc,
+     # cpusrc,
+     src_trezorcrypto,
+     src_wh, 
+     src_spdlog
+     ],
+   c_args: ['-march=native', '-msse4.1'],
+   cpp_args: cpp_args,
+   include_directories : [include_trezorcrypto,include_spdlog, include_asio, include_wh,include_json, include_httplib],
+  link_with: [verusoptlib,lib_asio],
+   dependencies: dep,
+   install : true)
 
  executable('wart-miner', vcs_dep, 
    [

@@ -27,7 +27,7 @@ void DeviceWorker::init_mining()
         j.set_random_seed((pool.blockSeed++) % 2000);
         randOffset = randuint32();
 
-        miner.set_triple_sha_job({ std::get<TargetV2>(j.t.get()), j.header() });
+        miner.set_triple_sha_job({ j.t, j.header() });
     } else {
         auto& j { std::get<StratumJob>(t) };
         miner.set_triple_sha_job({ j.target(), j.header() });

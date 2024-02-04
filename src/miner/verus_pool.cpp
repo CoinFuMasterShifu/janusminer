@@ -17,14 +17,6 @@ using namespace std::chrono_literals;
 //     bisecter->set_target(t2);
 // }
 
-void VerusPool::clean(TargetV2 nextTarget)
-{
-    target = nextTarget;
-    cleanIndex += 1;
-    std::lock_guard l(jobMutex);
-    jobQueue.clear(cleanIndex);
-};
-
 void VerusPool::push_janus_mined(Verus::Success&& b)
 {
     parent.push_janus_mined(std::move(b));
@@ -38,7 +30,7 @@ void VerusPool::push_event(Event e)
     st.cv.notify_one();
 }
 
-VerusPool::VerusPool(DevicePool& parent, SyncTools& st, size_t nWorkers)
+VerusPool::VerusPool(MiningCoordinator& parent, SyncTools& st, size_t nWorkers)
     : parent(parent)
     , st(st)
     , allCount(nWorkers)
@@ -57,17 +49,13 @@ std::pair<Hashrate, std::vector<Hashrate>> VerusPool::hashrates()
         total += hr;
         res.push_back(hr);
     }
-    return {total,std::move(res)};
+    return { total, std::move(res) };
 };
 
 std::optional<Verus::WorkerJob> VerusPool::pop_job(size_t N)
 {
-    auto t { threshold };
-
-    size_t M = double(N) / t.targetProportion;
-    trace_log().debug("[VERUS/POP] {}, {}, {}", M, N, t.targetProportion);
-    std::lock_guard l(jobMutex);
-    auto job { jobQueue.pop(M, t) };
+    std::unique_lock l(jobMutex);
+    auto job { jobQueue.pop(N) };
     if (!job) {
         if (jobQueue.is_fresh() == false)
             push_event(NoVerusInput {});
@@ -75,21 +63,16 @@ std::optional<Verus::WorkerJob> VerusPool::pop_job(size_t N)
     return job;
 }
 
-void VerusPool::push_job(Verus::PoolJob job)
+void VerusPool::push_job(Verus::QueuedJob job)
 {
-    auto hr { job.mined.hashrate() };
-
-    hashrateEstimator.push(job.mined.deviceId, hr);
-    update_produce_per_second(hashrateEstimator.hashrate());
-
     {
-        std::lock_guard l(jobMutex);
+        std::unique_lock l(jobMutex);
         jobQueue.push(std::move(job));
     }
     for (auto& w : workers) {
         w->wake_up();
     }
-};
+}
 
 void VerusPool::stop_mining()
 {
@@ -123,119 +106,17 @@ void VerusPool::handle_event(TraceVerus&& e)
         auto o = allCount.set_timing(e.workerIndex, ps.value());
         if (o) {
             auto& [fresh, totalPerSecond] = *o;
-            // auto
-            // kf
-            trace_log().debug("[VERUS/TRACE] {}, {}, {}/s", fresh, ms, totalPerSecond.total.format().to_string());
-            if (fresh) {
-                // now first time all are active
-                // efficiencyEstimator.push(totalPerSecond);
-                verusHashrateEstimator.push_hashrate(totalPerSecond.considered.val);
-            } else {
-                // update last pushed
-                // efficiencyEstimator.update_last(totalPerSecond);
-                verusHashrateEstimator.push_hashrate(totalPerSecond.considered.val);
+            trace_log().debug("[VERUS/TRACE] {}, {}/s", ms, totalPerSecond.total.format().to_string());
+            verusHashrateEstimator.push_hashrate(totalPerSecond.considered.val);
+
+            {
+                std::unique_lock l(jobMutex);
+                jobQueue.set_hashrate(totalPerSecond.considered);
             }
-            update_consume_per_second(totalPerSecond.total);
+            parent.set_hashrate(totalPerSecond.considered);
         }
     }
-    // }
 }
-
-void VerusPool::update_consume_per_second(Hashrate ps)
-{
-    trace_log().debug("[VERUS/CONSUMERATE] {}/s", ps.format().to_string());
-    assert(ps.val > 0);
-    consumePerSecond = ps;
-    update_threshold();
-}
-
-void VerusPool::update_produce_per_second(Hashrate ps)
-{
-    trace_log().debug("[SHA256T/PRODUCERATE] {}/s", ps.format().to_string());
-    assert(ps.val > 0);
-    producePerSecond = ps;
-    update_threshold();
-};
-
-void VerusPool::update_threshold()
-{
-    auto hr { verusHashrateEstimator.average_hashrate() };
-
-    if (!producePerSecond.has_value()
-        || !consumePerSecond.has_value()
-        || !hr.has_value()) {
-        trace_log().debug("[UPDATETHRESHOLD/FAILED]");
-        return; // cannot estimate
-    }
-
-    Hashrate currentPerSecond = *hr;
-    Hashrate targetPerSecond(*producePerSecond);
-    assert(targetPerSecond > 0.0 && *consumePerSecond > 0.0);
-
-    // double p { e->process };
-    // double s { e->scan };
-    // if (s <= p) {
-    //     spdlog::warn("Invalid CPU performance estimate.");
-    //     return false;
-    // }
-    // if (targetPerSecond > s) {
-    //     spdlog::error("GPU outruns CPU.");
-    //     return false;
-    // }
-
-    assert(target.has_value());
-    // double alpha = (targetPerSecond - p) / (s - p); // 0 < alpha < 1
-    //
-    trace_log().debug("[UPDATETHRESHOLD/HASHRATES] {}/s, {}/s", currentPerSecond.format().to_string(), targetPerSecond.format().to_string());
-    if (targetPerSecond < currentPerSecond) {
-        trace_log().warn("[UPDATETHRESHOLD/CPUOUTRUNSGPU] {}/s, {}/s", currentPerSecond.format().to_string(), targetPerSecond.format().to_string());
-        spdlog::warn("CPU outruns GPU. {}/s > {}/s", currentPerSecond.format().to_string(), targetPerSecond.format().to_string());
-    }
-    double correctionFactor { 1.0 };
-    if (producePerSecond) {
-        const auto lowerHard = producePerSecond->hash_per(100ms);
-        const auto lowerSoft = producePerSecond->hash_per(200ms);
-        const auto upperSoft = producePerSecond->hash_per(300ms);
-        const auto upperHard = producePerSecond->hash_per(400ms);
-        const auto val = jobQueue.watermark();
-        if (val < lowerHard)
-            correctionFactor = 1.3;
-        else if (val < lowerSoft)
-            correctionFactor = 1.1;
-        else if (val > upperSoft)
-            correctionFactor = 0.9;
-        else if (val > upperHard)
-            correctionFactor = 0.7;
-    }
-    double alpha = std::min(1.0, correctionFactor * hr->val / targetPerSecond); // 0 < alpha < 1
-    double tau { 1 / (*target).difficulty() }; // target
-    double c(alpha < tau ? 1.0 // only try already successful candidates
-                         : tau / alpha);
-    TargetV1 t(1 / c);
-    trace_log().debug("[UPDATETHRESHOLD/FACTOR] {}, {}, {}", correctionFactor, alpha, t.difficulty());
-
-    if (t == prevThresholdTarget)
-        return; // no change, nothing to do
-    prevThresholdTarget = t;
-    prevAlpha = alpha;
-
-    // form threshold
-    uint32_t threshold = ((~uint32_t(t.zeros8())) << 24) + t.bits24();
-    set_threshold({ alpha, threshold });
-
-    return;
-};
-
-void VerusPool::set_threshold(Verus::MineThreshold mt)
-{
-    trace_log().debug("[VERUS/THRESHOLD] {}, {}", mt.minThreshold, mt.targetProportion);
-
-    // save new threshold
-    threshold = mt;
-
-    // clear old worker timings
-    allCount.reset();
-};
 
 void VerusPool::process()
 {

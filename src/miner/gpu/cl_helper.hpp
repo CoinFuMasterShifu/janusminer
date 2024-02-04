@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #define CL_HPP_ENABLE_EXCEPTIONS
 #define CL_HPP_TARGET_OPENCL_VERSION 200
 #ifdef OPENCL_LEGACY
@@ -86,17 +87,33 @@ struct VectorPlaceholder {
 
 template <typename T>
 struct RetvalGenerator {
-    auto generate() const { return T {}; }
+    auto generate(size_t) const { return T {}; }
     auto size() const { return sizeof(T); }
     void* data(T& t) { return &t; }
 };
 
 template <typename T>
 struct RetvalGenerator<std::vector<T>> {
-    auto generate() const { return std::vector<T>(elements); }
-    auto size() const { return sizeof(T) * elements; }
+    auto generate(size_t bufSize) const
+    {
+        assert(bufSize % sizeof(T) == 0);
+        if (elements) {
+            size_t readSize = sizeof(T) * *elements;
+            assert(bufSize >= readSize);
+            assert(readSize != 0);
+            return std::vector<T>(*elements);
+        } else {
+            return std::vector<T>(bufSize / sizeof(T));
+        }
+    }
+    std::optional<size_t> size() const
+    {
+        if (elements)
+            return sizeof(T) * *elements;
+        return {};
+    }
     void* data(std::vector<T>& t) const { return t.data(); }
-    size_t elements;
+    std::optional<size_t> elements;
 };
 template <typename T>
 struct VectorChecker {
@@ -124,11 +141,8 @@ public:
     [[nodiscard]] auto read(const Buffer& b, CL::RetvalGenerator<T>& g)
     {
         const size_t bufSize { b.size() };
-        const size_t readSize { g.size() };
-        assert(bufSize >= readSize);
-        assert(readSize != 0);
-        auto out { g.generate() };
-        read_to(b, g.data(out), readSize, true);
+        auto out { g.generate(bufSize) };
+        read_to(b, g.data(out), bufSize, true);
         return out;
     }
 };

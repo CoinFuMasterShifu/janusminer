@@ -54,10 +54,10 @@ class JanusMinerOpt {
 
 public:
     JanusMinerOpt();
-    [[nodiscard]] MineResult mine(const std::vector<MinerJob>&, uint32_t threshold);
+    [[nodiscard]] MineResult mine(const Verus::WorkerJob& j);
 
 private:
-    bool mine_job(MineResult& res, const MinerJob& j, uint32_t threshold);
+    bool mine_job(MineResult& res, const CandidateBatch& j, uint32_t threshold);
     void check_set_header(const std::array<uint8_t,76>&);
 
 private:

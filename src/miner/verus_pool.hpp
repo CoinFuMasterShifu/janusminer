@@ -10,33 +10,37 @@
 namespace Verus {
 struct HashrateEstimator2 {
     struct Val {
-        ssize_t set(const Hashrate& hr){
-            auto res{ssize_t(hr.val) - v};
+        ssize_t set(const Hashrate& hr)
+        {
+            auto res { ssize_t(hr.val) - v };
             v = hr.val;
             return res;
         };
-        ssize_t v{0};
+        ssize_t v { 0 };
     };
-    public:
+
+public:
     void push(size_t deviceId, const Hashrate& hr)
     {
         total += perDevice[deviceId].set(hr);
     }
-    Hashrate hashrate() const{
-        return {size_t(total)};
+    Hashrate hashrate() const
+    {
+        return { size_t(total) };
     }
-    void reset(){
+    void reset()
+    {
         *this = {};
     }
-    private:
 
-    std::map<size_t,Val> perDevice;
-    ssize_t total{0};
+private:
+    std::map<size_t, Val> perDevice;
+    ssize_t total { 0 };
 };
 }
 
 struct Block;
-class DevicePool;
+class MiningCoordinator;
 
 class AllCount {
 public:
@@ -92,70 +96,83 @@ private:
 class VerusPool {
 
 public:
-    VerusPool(DevicePool& parent, SyncTools& st, size_t nWorkers);
+    VerusPool(MiningCoordinator& parent, SyncTools& st, size_t nWorkers);
 
-    std::pair<Hashrate,std::vector<Hashrate>> hashrates();
+    std::pair<Hashrate, std::vector<Hashrate>> hashrates();
     void notify_verus_tuned(size_t rIndex);
     void process();
     bool locked_needs_wakeup() { return events.size() > 0; }
-    void push_job(Verus::PoolJob);
+    void push_job(Verus::QueuedJob);
     void stop_mining();
-    void clean(TargetV2 nextTarget);
 
     void push_janus_mined(Verus::Success&& b);
 
+    void clean(size_t index)
+    {
+        cleanIndex = index;
+    }
+
     // async functions (with locks)
     std::optional<Verus::WorkerJob> pop_job(size_t N);
-    void trace_verus(VerusTiming vt, size_t cleanIndex, size_t workerIndex)
+    void trace_verus(VerusTiming vt, size_t workerIndex)
     {
-        push_event(TraceVerus { vt, cleanIndex, workerIndex });
+        push_event(TraceVerus { vt, workerIndex });
     }
     auto get_clean_index() const { return cleanIndex; }
 
 private:
     struct TraceVerus {
         VerusTiming timing;
-        size_t cleanIndex;
         size_t workerIndex;
     };
     struct NoVerusInput {
     };
+
     using Event = std::variant<TraceVerus, NoVerusInput>;
 
     void handle_event(TraceVerus&& e);
     void handle_event(NoVerusInput&& e);
+
     void push_event(Event e);
 
-    // rate adjustment functions
-    void update_consume_per_second(Hashrate);
-    void update_produce_per_second(Hashrate);
-    void update_threshold();
-    void set_threshold(Verus::MineThreshold);
-
-    DevicePool& parent;
+    MiningCoordinator& parent;
     SyncTools& st;
     AverageEstimator verusHashrateEstimator;
-    // EfficiencyEstimator efficiencyEstimator;
 
     std::vector<Event> events;
-
-    void benchmark_none();
 
     // private owned variables
 
     // job stuff
+    // template <typename T>
+    // class MutexProtected {
+    //     T data;
+    //     std::mutex m;
+    //     class Session {
+    //         friend class MutexProtected;
+    //         std::unique_lock<std::mutex> l;
+    //         T& t;
+    //         Session(std::mutex& m, T& t)
+    //             : l(m)
+    //             , t(t)
+    //         {
+    //         }
+    //
+    //     public:
+    //         T& operator()() { return t; }
+    //     };
+    //
+    // public:
+    //     auto session() { return Session(m, data); }
+    // };
+    // struct QueueData {
+    //     Verus::JobQueue jobQueue;
+    // };
+    // MutexProtected<QueueData> queueData;
     std::mutex jobMutex;
     Verus::JobQueue jobQueue;
 
-    std::optional<Hashrate> consumePerSecond; // consumer per second
-    std::optional<Hashrate> producePerSecond; // producer per second
-    Verus::HashrateEstimator2 hashrateEstimator;
-                                              
     size_t cleanIndex { 0 };
-    std::optional<TargetV2> target;
-    double prevAlpha{1.0};
-    std::optional<Target> prevThresholdTarget;
-    Verus::MineThreshold threshold;
 
     AllCount allCount;
 

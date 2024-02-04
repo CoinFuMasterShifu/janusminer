@@ -5,14 +5,6 @@
 #include <cassert>
 
 namespace Verus {
-TargetV2 PoolJob::target() const {
-    auto& j(mined.job);
-    if(std::holds_alternative<MineJob>(j)){
-        return std::get<TargetV2>(std::get<MineJob>(j).t.get());
-    }else{
-        return std::get<StratumJob>(j).target();
-    };
-};
 
 void JobQueue::clear(size_t newCleanIndex)
 {
@@ -20,35 +12,17 @@ void JobQueue::clear(size_t newCleanIndex)
     cleanIndex = newCleanIndex;
 };
 
-void JobQueue::push(PoolJob j)
+void JobQueue::push(QueuedJob j)
 {
-    auto& v { j.mined.invertedTargets };
-    const size_t N { v.size() };
+    if (j.clean_index() < cleanIndex)
+        return;
+    const size_t N { j.mined.size() };
     assert(N > 0);
     fresh = false;
     _watermark += N;
     trace_log().debug("[QUEUE/PUSH] {}, {}", _watermark, N);
-    auto a { std::make_shared<PoolJob>(j) };
-    assert(a.get());
-    queue.push(std::move(a));
-    while (_watermark >= 1000000000) {
-        drop();
-    }
+    queue.push(std::make_shared<QueuedJob>(std::move(j)));
 }
-void JobQueue::drop()
-{
-    assert(queue.size() > 0);
-    auto& j { *queue.front() };
-    const size_t n { j.mined.invertedTargets.size() };
-    assert(n > cursor);
-    const size_t s { n - cursor };
-    assert(_watermark >= s);
-    _watermark -= s;
-    trace_log().warn("[QUEUE/DROP] {}, {}", _watermark, s);
-    spdlog::warn("CPU queue full, dropping {} entries, new watermark is {} ", s, _watermark);
-    queue.pop();
-    cursor = 0;
-};
 
 void queue_drained()
 {
@@ -62,38 +36,41 @@ void queue_drained()
     }
 }
 
-std::optional<Verus::WorkerJob> JobQueue::pop(size_t N, Verus::MineThreshold t)
+double JobQueue::mine_proportion()
+{
+    if (!hashrate.has_value())
+        return 1.0;
+    size_t a { _watermark * 10 };
+    size_t b { *hashrate };
+    if (b > a)
+        return 1.0;
+    return double(b) / double(a);
+};
+
+std::optional<Verus::WorkerJob> JobQueue::pop(size_t N)
 {
     size_t total { 0 };
-    std::vector<MinerJob> res;
+    std::vector<CandidateBatch> res;
     while (true) {
         if (queue.size() == 0)
             break;
         auto& j { *queue.front() };
-        auto& v { j.mined.invertedTargets };
-        assert(cursor < v.size());
-        size_t M = std::min(N - total, v.size() - cursor);
+        auto& rs { j.mined.result_spans() };
+        assert(cursor < rs.size());
+        size_t M = std::min(N - total, rs.size() - cursor);
         assert(M > 0);
-        res.push_back({
+        res.push_back(CandidateBatch {
             .shared { queue.front() },
-            .nonceOffset = j.mined.offset,
             .targetV2 { j.target() },
-            .vec_begin { v.begin() },
-            .job_begin { v.begin() + cursor },
-            .job_end { v.begin() + cursor + M },
-        });
-        auto& mj = res.back();
-
-        // TODO: remove
-        const uint32_t end_index(mj.end_index());
-        uint32_t i = mj.begin_index();
-        assert(i < end_index);
+            .resultSpans { rs },
+            .offset = cursor,
+            .len = M });
 
         cursor += M;
         total += M;
         assert(_watermark >= M);
         _watermark -= M;
-        if (cursor == v.size()) {
+        if (cursor == rs.size()) {
             cursor = 0;
             queue.pop();
         }
@@ -110,9 +87,8 @@ std::optional<Verus::WorkerJob> JobQueue::pop(size_t N, Verus::MineThreshold t)
     assert(total > 0);
     trace_log().debug("[QUEUE/POP] {}, {}", _watermark, total);
     return Verus::WorkerJob {
-        .jobs { res },
-        .threshold { t },
-        .proportionOfWanted = double(total) / N,
+        .batches { res },
+        .mineProportion = mine_proportion(),
         .total = total,
         .cleanIndex = cleanIndex
     };
