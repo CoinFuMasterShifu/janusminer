@@ -17,7 +17,12 @@ void JobQueue::push(QueuedJob j)
     if (j.clean_index() < cleanIndex)
         return;
     const size_t N { j.mined.size() };
-    assert(N > 0);
+    if (N == 0) {
+        // it can happen that no tried sha256t hashess were within the 
+        // selection band (c,c+cpu_hashrate/gpu_hashrate)
+        // applied in the kernel 
+        return;
+    }
     fresh = false;
     _watermark += N;
     trace_log().debug("[QUEUE/PUSH] {}, {}", _watermark, N);
