@@ -29,6 +29,8 @@ class Platform : public cl::Platform {
 public:
     Platform(cl_platform_id id)
         : cl::Platform(id) {};
+    Platform(cl::Platform p)
+        : cl::Platform(p) {};
     static vector<CL::Platform> all()
     {
         std::vector<CL::Platform> platforms;
@@ -66,7 +68,8 @@ public:
 
 inline auto Device::platform() const
 {
-    return Platform { getInfo<CL_DEVICE_PLATFORM>() };
+
+    return Platform ( getInfo<CL_DEVICE_PLATFORM>() );
 };
 
 inline auto Device::str_info() const

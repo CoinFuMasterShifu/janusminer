@@ -19,13 +19,6 @@ struct HashrateDelta {
     ssize_t delta;
 };
 
-typedef union {
-    unsigned char h1[32];
-    unsigned short h2[16];
-    uint h4[8];
-    ulong h8[4];
-} hash_t;
-
 class Sha256tOpenclHasher;
 
 struct JobNonceRange {

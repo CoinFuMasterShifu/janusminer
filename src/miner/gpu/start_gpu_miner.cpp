@@ -1,5 +1,4 @@
 #include "device_pool.hpp"
-#include "gpu/cl_function.hxx"
 #include "gpu/opencl_hasher.hpp"
 #include "helpers.hpp"
 #include "spdlog/spdlog.h"
