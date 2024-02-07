@@ -100,7 +100,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/Windows/wart-miner.exe
-        asset_name: janusminer-windows
+        asset_name: janusminer-windows.exe
         asset_content_type: application/octet-stream
 
     - name: Upload Ubuntu 18.04 build 
