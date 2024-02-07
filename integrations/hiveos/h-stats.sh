@@ -47,7 +47,7 @@ if [ "$diffTime" -lt "$maxDelay" ]; then
     [[ -z "$rj" ]] && rj=0
     hash_arr=()
     busid_arr=()
-    fan_arr=()s
+    fan_arr=()
     temp_arr=()
     lines=()
 
