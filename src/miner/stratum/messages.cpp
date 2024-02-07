@@ -42,7 +42,7 @@ std::string submit(int32_t id, const Submission& s)
 
 std::optional<Message> parse_line(std::string line)
 {
-    std::cout << "Line: " << line << std::endl;
+    std::cout << "Received: " << line << std::endl;
     try {
         const auto parsed = nlohmann::json::parse(line);
         auto iter = parsed.find("result");

@@ -133,7 +133,7 @@ class Sha256tGPUHasher {
         }
         void try_start(CL::CommandQueue& queue, double fraction, size_t N, Sha256tGPUHasher::Functor& functor)
         {
-            assert(fraction > 0.0);
+            assert(fraction > 0.0); // TODO: failed
             using namespace std;
             size_t M;
             {

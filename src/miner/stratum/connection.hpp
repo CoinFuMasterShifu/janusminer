@@ -6,6 +6,7 @@
 #include "general/hex.hpp"
 #include "spdlog/spdlog.h"
 #include "messages.hpp"
+#include <iostream>
 
 namespace stratum {
     class ConnectionServer;
@@ -59,6 +60,7 @@ public:
     void submit(const stratum::Submission&, size_t connectionId);
     void write_line(std::string line)
     {
+        std::cout << "Sent: " << line << std::endl;
         std::lock_guard l(m);
         lines.emplace_back(make_unique<std::string>(std::move(line)));
         context.post([&] { process_lines(); });
