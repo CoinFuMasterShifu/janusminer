@@ -18,7 +18,7 @@ endif
 if get_option('windows') == true
   link_args = ['-lws2_32', '-lcfgmgr32']
 else
-  link_args = []
+  link_args = ['-ldl']
 endif
 
 kernelcat = run_command( ['sh', files('./gpu/generate_kernel.sh'), kernel_files], check: true).stdout().strip()
