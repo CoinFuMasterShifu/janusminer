@@ -295,10 +295,10 @@ public:
     using JobGenerator = job::Generator;
     friend class Sha256tGPUHasher;
     using callback_t = std::function<void(TripleSha::MinedValues)>;
-    Sha256tOpenclHasher(std::vector<CL::Device> devices, callback_t callback)
+    Sha256tOpenclHasher(std::vector<CL::Device> devices, callback_t callback, size_t queuesizeGB)
         : on_mined(std::move(callback))
     {
-        cyclicQueue = std::make_shared<CyclicQueue>([&] { allocation_possible(); });
+        cyclicQueue = std::make_shared<CyclicQueue>([&] { allocation_possible(); }, (queuesizeGB* 1000000000)/4 );
         for (auto& d : devices) {
             hashers.push_back(std::make_unique<Sha256tGPUHasher>(*this, d));
         }

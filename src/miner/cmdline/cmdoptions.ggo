@@ -12,5 +12,7 @@ option "port" p "Port (RPC-Node)" int default="3000" optional
 
 option "address" a "Specify address that is mined to (for mining directly to node)" string default="" typestr="WALLETADDRESS" optional
 
+option "queuesize" q "Queuesize in GB" int default="4" optional
+
 option "user" u "Enable stratum protocol and specify username" string default="" optional
 option "password" - "Password (for Stratum)" string default="" optional

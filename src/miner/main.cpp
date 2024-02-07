@@ -11,7 +11,7 @@
 #include <variant>
 using namespace std;
 
-int start_miner(std::string gpus, size_t threads, std::variant<stratum::ConnectionData, NodeConnectionData> connectionData);
+int start_miner(std::string gpus, size_t threads, ConnectionArg connectionData);
 
 int test_gpu_miner2();
 
@@ -28,6 +28,10 @@ int process(gengetopt_args_info& ai)
         if (ai.gpus_given) {
             gpus.assign(ai.gpus_arg);
         }
+        
+        if (ai.queuesize_arg < 0 ) {
+            spdlog::error("Queue size cannot be negative");
+        }
         if (ai.address_given && strlen(ai.address_arg) > 0) {
             if (ai.user_given && strlen(ai.user_arg) > 0)
                 spdlog::warn("Stratum parameter '-u' is ignored because direct-to-node mining is enabled via '-a'");
@@ -35,14 +39,19 @@ int process(gengetopt_args_info& ai)
                 NodeConnectionData {
                     .host { host },
                     .port = port,
+                    .queuesizeGB=static_cast<size_t>(ai.queuesize_arg),
                     .address { ai.address_arg } });
-        } else { // stratum
+        } else if(ai.user_given) { // stratum
             start_miner(gpus, threads,
                 stratum::ConnectionData {
                     .host { ai.host_arg },
                     .port { std::to_string(ai.port_arg) },
+                    .queuesizeGB=static_cast<size_t>(ai.queuesize_arg),
                     .user { ai.user_arg },
                     .pass { ai.password_arg } });
+        }else{
+            spdlog::error("Either -a or -u parameter is required");
+            return -1;
         }
     } catch (std::runtime_error& e) {
         spdlog::error("{}", e.what());

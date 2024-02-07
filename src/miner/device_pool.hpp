@@ -12,6 +12,7 @@
 #include "synctools.hpp"
 #include "verus_pool.hpp"
 #include <chrono>
+#include <variant>
 #include <vector>
 namespace Verus {
 class Worker;
@@ -19,7 +20,17 @@ class Worker;
 struct NodeConnectionData {
     std::string host;
     uint16_t port;
+    size_t queuesizeGB { 4 };
     Address address;
+};
+
+class ConnectionArg : public std::variant<stratum::ConnectionData, NodeConnectionData> {
+public:
+    size_t queuesize_gb() const
+    {
+        return std::visit([](auto& d) { return d.queuesizeGB; }, *this);
+    }
+    using variant::variant;
 };
 
 class StratumConnectionData {
@@ -50,7 +61,7 @@ class MiningCoordinator {
     friend class Verus::Worker;
 
 public:
-    MiningCoordinator(const std::vector<CL::Device>& devices, size_t verusWorkers, std::variant<stratum::ConnectionData, NodeConnectionData> connectionData);
+    MiningCoordinator(const std::vector<CL::Device>& devices, size_t verusWorkers, const ConnectionArg& connectionData);
 
     void notify_mined_triple_sha(TripleSha::MinedValues); // for Janushash
     void push_janus_mined(Verus::Success&& s)
@@ -76,8 +87,8 @@ public:
     using Event = std::variant<WorkerResult, OnJanusMined,
         StratumSetDiff, StratumNotify>;
 
-
     void set_hashrate(Hashrate hahsrate);
+
 private:
     void init_connection(const stratum::ConnectionData&);
     void init_connection(const NodeConnectionData&);
@@ -124,13 +135,11 @@ private:
 
     std::mutex job_mutex;
 
-    
-
     // Job status for node mining
     std::optional<Header> currentHeader;
     std::optional<Hash> prevHash; // to determine clean/outdated blocks
-    size_t cleanIndex{0};
-                                  
+    size_t cleanIndex { 0 };
+
     VerusPool verusPool;
 
     // pool properties

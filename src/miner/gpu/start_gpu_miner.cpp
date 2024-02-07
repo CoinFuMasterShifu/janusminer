@@ -51,7 +51,7 @@ auto all_gpu_devices()
     return s;
 }
 
-int start_miner(std::string gpus, size_t threads, std::variant<stratum::ConnectionData, NodeConnectionData> connectionData)
+int start_miner(std::string gpus, size_t threads, ConnectionArg connectionArg)
 {
     srand(time(0));
 
@@ -88,6 +88,6 @@ int start_miner(std::string gpus, size_t threads, std::variant<stratum::Connecti
     }
     cout << "Using " << threads << " CPU threads for Verushash" << endl;
 
-    MiningCoordinator(dv, threads, connectionData).run();
+    MiningCoordinator(dv, threads, connectionArg).run();
     return 0;
 }

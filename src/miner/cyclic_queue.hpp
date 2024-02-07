@@ -63,7 +63,7 @@ public:
         }
     };
 
-    CyclicQueue(std::function<void()> freeCallback, size_t entries = 1000000000 /*1 << 28*/)
+    CyclicQueue(std::function<void()> freeCallback, size_t entries)
         : data(entries)
         , i0(data.size())
         , i1(data.size())

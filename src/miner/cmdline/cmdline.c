@@ -41,6 +41,7 @@ const char *gengetopt_args_info_help[] = {
   "  -h, --host=STRING            Host (RPC-Node)  (default=`localhost')",
   "  -p, --port=INT               Port (RPC-Node)  (default=`3000')",
   "  -a, --address=WALLETADDRESS  Specify address that is mined to (for mining\n                                 directly to node)  (default=`')",
+  "  -q, --queuesize=INT          Queuesize in GB  (default=`4')",
   "  -u, --user=STRING            Enable stratum protocol and specify username\n                                 (default=`')",
   "      --password=STRING        Password (for Stratum)  (default=`')",
     0
@@ -74,6 +75,7 @@ void clear_given (struct gengetopt_args_info *args_info)
   args_info->host_given = 0 ;
   args_info->port_given = 0 ;
   args_info->address_given = 0 ;
+  args_info->queuesize_given = 0 ;
   args_info->user_given = 0 ;
   args_info->password_given = 0 ;
 }
@@ -92,6 +94,8 @@ void clear_args (struct gengetopt_args_info *args_info)
   args_info->port_orig = NULL;
   args_info->address_arg = gengetopt_strdup ("");
   args_info->address_orig = NULL;
+  args_info->queuesize_arg = 4;
+  args_info->queuesize_orig = NULL;
   args_info->user_arg = gengetopt_strdup ("");
   args_info->user_orig = NULL;
   args_info->password_arg = gengetopt_strdup ("");
@@ -111,8 +115,9 @@ void init_args_info(struct gengetopt_args_info *args_info)
   args_info->host_help = gengetopt_args_info_help[4] ;
   args_info->port_help = gengetopt_args_info_help[5] ;
   args_info->address_help = gengetopt_args_info_help[6] ;
-  args_info->user_help = gengetopt_args_info_help[7] ;
-  args_info->password_help = gengetopt_args_info_help[8] ;
+  args_info->queuesize_help = gengetopt_args_info_help[7] ;
+  args_info->user_help = gengetopt_args_info_help[8] ;
+  args_info->password_help = gengetopt_args_info_help[9] ;
   
 }
 
@@ -210,6 +215,7 @@ cmdline_parser_release (struct gengetopt_args_info *args_info)
   free_string_field (&(args_info->port_orig));
   free_string_field (&(args_info->address_arg));
   free_string_field (&(args_info->address_orig));
+  free_string_field (&(args_info->queuesize_orig));
   free_string_field (&(args_info->user_arg));
   free_string_field (&(args_info->user_orig));
   free_string_field (&(args_info->password_arg));
@@ -258,6 +264,8 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
     write_into_file(outfile, "port", args_info->port_orig, 0);
   if (args_info->address_given)
     write_into_file(outfile, "address", args_info->address_orig, 0);
+  if (args_info->queuesize_given)
+    write_into_file(outfile, "queuesize", args_info->queuesize_orig, 0);
   if (args_info->user_given)
     write_into_file(outfile, "user", args_info->user_orig, 0);
   if (args_info->password_given)
@@ -525,12 +533,13 @@ cmdline_parser_internal (
         { "host",	1, NULL, 'h' },
         { "port",	1, NULL, 'p' },
         { "address",	1, NULL, 'a' },
+        { "queuesize",	1, NULL, 'q' },
         { "user",	1, NULL, 'u' },
         { "password",	1, NULL, 0 },
         { 0,  0, 0, 0 }
       };
 
-      c = getopt_long (argc, argv, "Vt:h:p:a:u:", long_options, &option_index);
+      c = getopt_long (argc, argv, "Vt:h:p:a:q:u:", long_options, &option_index);
 
       if (c == -1) break;	/* Exit from `while (1)' loop.  */
 
@@ -585,6 +594,18 @@ cmdline_parser_internal (
               &(local_args_info.address_given), optarg, 0, "", ARG_STRING,
               check_ambiguity, override, 0, 0,
               "address", 'a',
+              additional_error))
+            goto failure;
+        
+          break;
+        case 'q':	/* Queuesize in GB.  */
+        
+        
+          if (update_arg( (void *)&(args_info->queuesize_arg), 
+               &(args_info->queuesize_orig), &(args_info->queuesize_given),
+              &(local_args_info.queuesize_given), optarg, 0, "4", ARG_INT,
+              check_ambiguity, override, 0, 0,
+              "queuesize", 'q',
               additional_error))
             goto failure;
         

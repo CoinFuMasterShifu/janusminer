@@ -54,6 +54,9 @@ struct gengetopt_args_info
   char * address_arg;	/**< @brief Specify address that is mined to (for mining directly to node) (default='').  */
   char * address_orig;	/**< @brief Specify address that is mined to (for mining directly to node) original value given at command line.  */
   const char *address_help; /**< @brief Specify address that is mined to (for mining directly to node) help description.  */
+  int queuesize_arg;	/**< @brief Queuesize in GB (default='4').  */
+  char * queuesize_orig;	/**< @brief Queuesize in GB original value given at command line.  */
+  const char *queuesize_help; /**< @brief Queuesize in GB help description.  */
   char * user_arg;	/**< @brief Enable stratum protocol and specify username (default='').  */
   char * user_orig;	/**< @brief Enable stratum protocol and specify username original value given at command line.  */
   const char *user_help; /**< @brief Enable stratum protocol and specify username help description.  */
@@ -68,6 +71,7 @@ struct gengetopt_args_info
   unsigned int host_given ;	/**< @brief Whether host was given.  */
   unsigned int port_given ;	/**< @brief Whether port was given.  */
   unsigned int address_given ;	/**< @brief Whether address was given.  */
+  unsigned int queuesize_given ;	/**< @brief Whether queuesize was given.  */
   unsigned int user_given ;	/**< @brief Whether user was given.  */
   unsigned int password_given ;	/**< @brief Whether password was given.  */
 
