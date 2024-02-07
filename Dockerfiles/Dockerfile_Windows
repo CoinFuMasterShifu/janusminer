@@ -10,5 +10,5 @@ RUN mkdir /install
 RUN --mount=type=cache,target=/build-mingw DESTDIR=/install meson install -C /build-mingw
 
 FROM scratch AS export-stage
-COPY --from=build /install/usr/local/bin/wart-miner .
+COPY --from=build /install/usr/local/bin/wart-miner.exe .
 
