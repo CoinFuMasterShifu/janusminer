@@ -13,11 +13,11 @@ COPY . /code
 RUN ln -s /usr/include/CL/cl2.hpp /usr/include/CL/opencl.hpp
 RUN mkdir /build
 WORKDIR /code
-RUN --mount=type=cache,target=/build LDFLAGS='-lpthread -static-libgcc -static-libstdc++' meson /build/code --default-library static --buildtype=release
+RUN LDFLAGS='-lpthread -static-libgcc -static-libstdc++' meson /build/code --default-library static --buildtype=release
 WORKDIR /build/code
-RUN --mount=type=cache,target=/build ninja
+RUN ninja
 RUN mkdir /install
-RUN --mount=type=cache,target=/build DESTDIR=/install meson install
+RUN DESTDIR=/install meson install
 
 FROM scratch AS export-stage
 COPY --from=build install/usr/local/bin/wart-miner .

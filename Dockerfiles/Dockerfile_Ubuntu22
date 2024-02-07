@@ -8,11 +8,11 @@ RUN ln -s /usr/lib/x86_64-linux-gnu/libpthread.so.0 /usr/lib/x86_64-linux-gnu/li
 COPY . /code
 RUN mkdir /build
 WORKDIR /code
-RUN --mount=type=cache,target=/build LDFLAGS='-lpthread -static-libgcc -static-libstdc++' meson /build/code --default-library static --buildtype=release
+RUN LDFLAGS='-lpthread -static-libgcc -static-libstdc++' meson /build/code --default-library static --buildtype=release
 WORKDIR /build/code
-RUN --mount=type=cache,target=/build ninja
+RUN ninja
 RUN mkdir /install
-RUN --mount=type=cache,target=/build DESTDIR=/install meson install
+RUN DESTDIR=/install meson install
 
 FROM scratch AS export-stage
 COPY --from=build install/usr/local/bin/wart-miner .
