@@ -150,7 +150,7 @@ private:
     std::span<const uint8_t> s;
     size_t nAddresses;
     uint16_t nRewards;
-    size_t nTransfers;
+    size_t nTransfers{0};
     size_t offsetAddresses = 0;
     size_t offsetRewards = 0;
     size_t offsetTransfers = 0;
