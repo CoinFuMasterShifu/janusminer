@@ -1,5 +1,6 @@
 #pragma once
 
+#include "block/chain/height.hpp"
 #include "crypto/hash.hpp"
 #include <span>
 
@@ -128,8 +129,8 @@ public:
     constexpr static size_t AddressSize { 20 };
     constexpr static size_t RewardSize { 16 };
     constexpr static size_t TransferSize { 34 + SIGLEN };
-    BodyView(std::span<const uint8_t>);
-    Hash merkleRoot() const;
+    BodyView(std::span<const uint8_t>, NonzeroHeight h, bool testnet);
+    Hash merkleRoot(NonzeroHeight h, bool testnet) const;
     bool valid() const { return isValid; }
     size_t size() const { return s.size(); }
     const uint8_t* data() const { return s.data(); }

@@ -25,8 +25,9 @@ void set_random_seed(uint32_t newSeed);
 void MineJob::set_random_seed(uint32_t newSeed)
 {
     memcpy(block.body.data().data(), &newSeed, 4);
-    BodyView bv(block.body.view());
-    block.header.set_merkleroot(bv.merkleRoot());
+    BodyView bv(block.body.view(block.height,testnet));
+    
+    block.header.set_merkleroot(bv.merkleRoot(block.height,testnet));
 }
 
 std::array<uint8_t, 76> MineJob::header() const

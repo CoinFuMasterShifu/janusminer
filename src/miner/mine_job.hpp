@@ -11,6 +11,7 @@ struct MineJob {
     Block block;
     TargetV2 t;
     size_t cleanIndex;
+    bool testnet{false};
     // methods
     std::array<uint8_t, 76> header() const;
     void set_random_seed(uint32_t newSeed);

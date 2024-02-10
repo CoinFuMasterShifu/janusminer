@@ -1,4 +1,5 @@
 #pragma once
+#include "block/chain/height.hpp"
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -16,7 +17,7 @@ public:
     size_t size() const { return bytes.size(); }
     auto& data() const{return bytes;}
     auto& data(){return bytes;}
-    BodyView view() const;
+    BodyView view( NonzeroHeight h, bool testnet) const;
     bool operator==(const BodyContainer&) const = default;
 
 private:

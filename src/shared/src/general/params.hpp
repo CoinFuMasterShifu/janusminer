@@ -67,3 +67,4 @@ inline constexpr uint32_t retarget_floor(uint32_t height)
 /////////////
 constexpr bool JANUSENABLED = true;
 constexpr uint32_t JANUSRETARGETSTART = retarget_floor(720);
+constexpr uint32_t NEWBLOCKSTRUCUTREHEIGHT = 981500;

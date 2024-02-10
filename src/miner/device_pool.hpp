@@ -110,7 +110,7 @@ private:
 
     void poll();
     void set_ignore_below();
-    void assign_work(const Block& b);
+    void assign_work(const Block& b, bool testnet);
     void assign_work(StratumGeneratorArgs& sj);
     void stop_mining();
     void submit(const Block& b);

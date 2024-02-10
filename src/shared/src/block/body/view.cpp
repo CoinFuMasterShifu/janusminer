@@ -7,40 +7,67 @@
 #include <vector>
 using namespace std;
 
-BodyView::BodyView(std::span<const uint8_t> s)
+BodyView::BodyView(std::span<const uint8_t> s, NonzeroHeight h, bool testnet)
     : s(s)
 {
+
     Reader rd { s };
 
     if (s.size() > MAXBLOCKSIZE)
         return;
-    // Read new address section
-    rd.skip(10); // for mining
-    nAddresses = rd.uint16();
-    offsetAddresses = rd.cursor() - s.data();
-    if (rd.remaining() < nAddresses * AddressSize)
-        return;
-    rd.skip(nAddresses * AddressSize);
+    if (h.value() >= NEWBLOCKSTRUCUTREHEIGHT || testnet) {
+        // Read new address section
+        rd.skip(10); // for mining
+        nAddresses = rd.uint16();
+        offsetAddresses = rd.cursor() - s.data();
+        if (rd.remaining() < nAddresses * AddressSize)
+            return;
+        rd.skip(nAddresses * AddressSize);
 
-    // Read reward section
-    nRewards = 1;
-    if (rd.remaining() < RewardSize * nRewards)
-        return;
-    offsetRewards = rd.cursor() - s.data();
-    rd.skip(16 * nRewards);
+        // Read reward section
+        nRewards = 1;
+        if (rd.remaining() < RewardSize * nRewards)
+            return;
+        offsetRewards = rd.cursor() - s.data();
+        rd.skip(16 * nRewards);
 
-    // Read payment section
-    if (rd.remaining() != 0) {
+        // Read payment section
+        if (rd.remaining() != 0) {
+            nTransfers = rd.uint32();
+            // Make sure that it has correct length
+            if (rd.remaining() != (TransferSize)*nTransfers)
+                return;
+        }
+        offsetTransfers = rd.cursor() - s.data();
+    } else {
+        // Read new address section
+        if (rd.remaining() < 8)
+            return;
+        rd.skip(4); // for mining
+        nAddresses = rd.uint32();
+        offsetAddresses = rd.cursor() - s.data();
+        if (rd.remaining() < nAddresses * AddressSize + 4)
+            return;
+        rd.skip(nAddresses * AddressSize);
+
+        // Read reward section
+        nRewards = rd.uint16();
+        if (rd.remaining() < RewardSize * nRewards + 4)
+            return;
+        offsetRewards = rd.cursor() - s.data();
+        rd.skip(16 * nRewards);
+
+        // Read payment section
         nTransfers = rd.uint32();
         // Make sure that it has correct length
         if (rd.remaining() != (TransferSize)*nTransfers)
             return;
+        offsetTransfers = rd.cursor() - s.data();
     }
-    offsetTransfers = rd.cursor() - s.data();
     isValid = true;
-};
+}
 
-Hash BodyView::merkleRoot() const
+Hash BodyView::merkleRoot(NonzeroHeight h, bool testnet) const
 {
     assert(isValid);
     std::vector<Hash> hashes(nAddresses + nRewards + nTransfers);
@@ -59,6 +86,7 @@ Hash BodyView::merkleRoot() const
     std::vector<Hash> tmp, *from, *to;
     from = &hashes;
     to = &tmp;
+    bool block_v2 = testnet || h.value() >= NEWBLOCKSTRUCUTREHEIGHT;
     do {
         to->resize((from->size() + 1) / 2);
         size_t j = 0;
@@ -70,7 +98,7 @@ Hash BodyView::merkleRoot() const
             }
 
             if (to->size() == 1)
-                hasher.write(data(), 4); // first 4 bytes in block are for extranonce I think?
+                hasher.write(data(), block_v2 ? 10 : 4);
             (*to)[i] = std::move(hasher);
             j += 2;
         }
