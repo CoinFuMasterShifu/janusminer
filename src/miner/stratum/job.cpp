@@ -2,12 +2,14 @@
 #include "crypto/hasher_sha256.hpp"
 #include "general/byte_order.hpp"
 
-std::vector<uint8_t> StratumJobGenerator::gen_extra2() const {
+std::vector<uint8_t> StratumJobGenerator::gen_extra2() const
+{
     assert(data->_extranonce);
-    uint32_t e { hton32((*data->_extranonce)++) };
+    auto& e_ref(*data->_extranonce);
+    const uint32_t e { hton32(e_ref++) };
     size_t s { data->subscription.extranonce2size };
-    std::vector<uint8_t> extra2(s);
-    memcpy(extra2.data(), &e + sizeof(e) - s, s);
+    std::vector<uint8_t> extra2(s, 0);
+    memcpy(extra2.data() + s - sizeof(e), &e, s);
     return extra2;
 };
 
@@ -19,7 +21,8 @@ Hash StratumJobGenerator::gen_merkle_root(std::vector<uint8_t> extra2) const
         << extra2;
 }
 
-StratumJob StratumJobGenerator::generate_job() const{
+StratumJob StratumJobGenerator::generate_job() const
+{
     return StratumJob(*this);
 }
 
