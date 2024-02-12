@@ -25,7 +25,7 @@ else
 fi
 conf=""
 
-if [ -z "$CUSTOM_TEMPLATE" ]; then
+if [[ $CUSTOM_TEMPLATE == "null" ]]; then
     echo "Wallet address is not specified"
     conf+="-h $HOST_URL -p $HOST_PORT"
 else
