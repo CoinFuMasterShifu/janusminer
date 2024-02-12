@@ -23,6 +23,7 @@ elif [[ $CUSTOM_URL =~ ^([^:]+)://([^/]+):([0-9]+)$ ]]; then
 else
     echo "Invalid input."
 fi
+conf=""
 
 if [ -z "$CUSTOM_TEMPLATE" ]; then
     echo "Wallet address is not specified"
@@ -30,14 +31,15 @@ else
     if [[ $CUSTOM_TEMPLATE == *.* ]]; then
         USER="${CUSTOM_TEMPLATE##*.}"
         WALLET="${CUSTOM_TEMPLATE%.*}"
+        conf+="-h $HOST_URL -p $HOST_PORT -u $CUSTOM_TEMPLATE"
     else
-        USER=""
-        WALLET="$CUSTOM_TEMPLATE"
+        WALLET="${CUSTOM_TEMPLATE%.*}"
+        conf+="-h $HOST_URL -p $HOST_PORT -a $WALLET"
     fi
 fi
 
-conf=""
-conf+="-h $HOST_URL -p $HOST_PORT -a $WALLET -u $USER"
+
+
 
 [[ ! -z $CUSTOM_USER_CONFIG ]] && conf+=" $CUSTOM_USER_CONFIG"
 
