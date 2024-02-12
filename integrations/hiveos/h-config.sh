@@ -27,6 +27,7 @@ conf=""
 
 if [ -z "$CUSTOM_TEMPLATE" ]; then
     echo "Wallet address is not specified"
+    conf+="-h $HOST_URL -p $HOST_PORT"
 else
     if [[ $CUSTOM_TEMPLATE == *.* ]]; then
         USER="${CUSTOM_TEMPLATE##*.}"
