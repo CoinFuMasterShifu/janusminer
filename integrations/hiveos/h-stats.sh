@@ -14,7 +14,8 @@
 
 . `dirname $BASH_SOURCE`/h-manifest.conf
 logPart=`tail -n 100 $CUSTOM_LOG_BASENAME.log | sed -n '/Total hashrate (GPU)/h;//!H;$!d;x;//p'`
-stats_raw=`echo "$logPart" | grep "Total hashrate (GPU)"`
+#stats_raw=`echo "$logPart" | grep "Total hashrate (GPU)"`
+stats_raw=`echo "$logPart" | grep "Janusscore"`
 
 #Calculate miner log freshness
 
@@ -26,7 +27,9 @@ diffTime=`echo $((time_now-time_rep)) | tr -d '-'`
 
     
 if [ "$diffTime" -lt "$maxDelay" ]; then
-    total_hashrate=`echo "$stats_raw" | awk '{print $7}'`
+#    total_hashrate=`echo "$stats_raw" | awk '{print $7}'`
+    total_hashrate=`echo "$stats_raw" | awk '{printf "%.2f\n", $(NF-1)}'`
+
 	if [[ $stats_raw == *"mh/s"* ]]; then
 		total_hashrate=$((`echo "scale=0; $total_hashrate * 1000 / 1" | bc -l`))
 	elif [[ $stats_raw == *"gh/s"* ]]; then
@@ -92,7 +95,7 @@ if [ "$diffTime" -lt "$maxDelay" ]; then
             --argjson fan "$fan_json" \
             --argjson temp "$temp_json" \
             --arg uptime "$uptime" \
-            '{ hs: $hs, hs_units: "mhs", algo : "JanusHash", ver:$ver , $uptime, $bus_numbers, $temp, $fan, ar: ['$ac', '$rj']}')
+            '{ hs: $hs, hs_units: "mhs", algo : "Janusscore", ver:$ver , $uptime, $bus_numbers, $temp, $fan, ar: ['$ac', '$rj']}')
     khs=$total_hashrate
 else
   khs=0
