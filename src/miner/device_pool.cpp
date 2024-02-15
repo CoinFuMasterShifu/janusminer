@@ -93,8 +93,8 @@ void MiningCoordinator::print_hashrate()
     // }
     spdlog::info("Total hashrate (GPU): {}/s", Hashrate(sumSha256t).format().to_string());
 
-    for (auto& [name, hr] : sha256tHashrates) {
-        spdlog::info("   {}: {}/s", name, Hashrate(hr).format().to_string());
+    for (auto& [index, name, hr] : sha256tHashrates) {
+        spdlog::info("   [{}] {}: {}/s", index, name, Hashrate(hr).format().to_string());
     }
     spdlog::info("Total hashrate (CPU): {}/s", sumVerus.format().to_string());
     for (size_t i = 0; i < verusHashrates.size(); ++i) {

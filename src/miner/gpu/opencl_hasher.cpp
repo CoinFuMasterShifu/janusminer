@@ -50,7 +50,8 @@ namespace {
 }
 
 Sha256tGPUHasher::Sha256tGPUHasher(Sha256tOpenclHasher& parent, CL::Device& device)
-    : deviceName { device.name() }
+    : deviceIndex(device.index())
+    , deviceName { device.name() }
     , parent(parent)
     , context(device)
     , program(build_program(context))
@@ -63,7 +64,7 @@ Sha256tGPUHasher::Sha256tGPUHasher(Sha256tOpenclHasher& parent, CL::Device& devi
 std::shared_ptr<CyclicQueue::Buffer> Sha256tGPUHasher::Allocator::allocateElements(size_t elements)
 {
     assert(elements > 0);
-    if (auto allocated = alloc(1 + 2 * elements); allocated){
+    if (auto allocated = alloc(1 + 2 * elements); allocated) {
         assert((allocated->first.size() + allocated->second.size()) / 2 <= elements);
         return allocated;
     }
@@ -233,14 +234,14 @@ void Sha256tOpenclHasher::allocation_possible()
     }
 }
 
-std::pair<uint64_t, std::vector<std::pair<std::string, uint64_t>>> Sha256tOpenclHasher::hashrates()
+std::pair<uint64_t, std::vector<std::tuple<uint32_t, std::string, uint64_t>>> Sha256tOpenclHasher::hashrates()
 {
     std::lock_guard l(m);
-    std::vector<std::pair<std::string, uint64_t>> v;
+    std::vector<std::tuple<uint32_t, std::string, uint64_t>> v;
     for (auto& h : hashers) {
         auto [hashrate, delta] = h->hashrate();
         totalHashrate += delta;
-        v.push_back({ h->deviceName, hashrate });
+        v.push_back({ h->deviceIndex, h->deviceName, hashrate });
     }
     return { totalHashrate, std::move(v) };
 };

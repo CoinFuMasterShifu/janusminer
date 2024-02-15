@@ -12,9 +12,14 @@ namespace CL {
 template <typename T>
 using vector = std::vector<T>;
 class Device : public cl::Device {
+    uint32_t _index;
 
 public:
-    using cl::Device::Device;
+    Device(cl::Device d, uint32_t index)
+        : cl::Device(std::move(d))
+        , _index(index)
+    {
+    }
     auto name() const { return getInfo<CL_DEVICE_NAME>(); };
     auto vendor() const { return getInfo<CL_DEVICE_VENDOR>(); };
     auto version() const { return getInfo<CL_DEVICE_VERSION>(); };
@@ -23,6 +28,7 @@ public:
     auto extensions() const { return getInfo<CL_DEVICE_EXTENSIONS>(); };
     auto platform() const;
     auto str_info() const;
+    auto index() const { return _index; }
 };
 class Platform : public cl::Platform {
 
@@ -59,8 +65,8 @@ public:
         vector<cl_device_id> ids(n);
         assert(n == 0 || CL_SUCCESS == ::clGetDeviceIDs(object_, type, n, ids.data(), NULL));
         devices.reserve(ids.size());
-        for (auto id : ids) {
-            devices.push_back(Device(id, true));
+        for (uint32_t i = 0; i < ids.size(); ++i) {
+            devices.push_back({ cl::Device(ids[i], true), i });
         }
         return devices;
     }
@@ -69,7 +75,7 @@ public:
 inline auto Device::platform() const
 {
 
-    return Platform ( getInfo<CL_DEVICE_PLATFORM>() );
+    return Platform(getInfo<CL_DEVICE_PLATFORM>());
 };
 
 inline auto Device::str_info() const
