@@ -14,7 +14,8 @@
 
 . `dirname $BASH_SOURCE`/h-manifest.conf
 logPart=`tail -n 100 $CUSTOM_LOG_BASENAME.log | sed -n '/Total hashrate (GPU)/h;//!H;$!d;x;//p'`
-stats_raw=`echo "$logPart" | grep "Total hashrate (GPU)"`
+#stats_raw=`echo "$logPart" | grep "Total hashrate (GPU)"`
+stats_raw=`echo "$logPart" | grep "Janusscore"`
 
 #Calculate miner log freshness
 
@@ -26,7 +27,9 @@ diffTime=`echo $((time_now-time_rep)) | tr -d '-'`
 
     
 if [ "$diffTime" -lt "$maxDelay" ]; then
-    total_hashrate=`echo "$stats_raw" | awk '{print $7}'`
+#    total_hashrate=`echo "$stats_raw" | awk '{print $7}'`
+    total_hashrate=`echo "$stats_raw" | awk '{printf "%.2f\n", $(NF-1)}'`
+
 	if [[ $stats_raw == *"mh/s"* ]]; then
 		total_hashrate=$((`echo "scale=0; $total_hashrate * 1000 / 1" | bc -l`))
 	elif [[ $stats_raw == *"gh/s"* ]]; then
@@ -50,6 +53,7 @@ if [ "$diffTime" -lt "$maxDelay" ]; then
     fan_arr=()
     temp_arr=()
     lines=()
+    index_arr=()
 
     if [ $(gpu-detect NVIDIA) -gt 0 ]; then
             brand_gpu_count=$(gpu-detect NVIDIA)
@@ -58,24 +62,26 @@ if [ "$diffTime" -lt "$maxDelay" ]; then
             brand_gpu_count=$(gpu-detect AMD)
             BRAND_MINER="amd"
     fi
-
-    for(( i=0; i < gpu_count; i++ )); do
-            [[ "${brands[i]}" != $BRAND_MINER ]] && continue
-            [[ "${busids[i]}" =~ ^([A-Fa-f0-9]+): ]]
-            busid_arr+=($((16#${BASH_REMATCH[1]})))
-            temp_arr+=(${temps[i]})
-            fan_arr+=(${fans[i]})                
-    done
     
     logPart=`echo "$logPart" | sed -n '/Total hashrate (GPU)/,/Total hashrate (CPU)/{/Total hashrate (GPU)/!{/Total hashrate (CPU)/!p}}'`
     while read -r string; do
         [[ ! `echo $string | grep 'h/s'` ]] && continue
-        hashrate=`echo $string | awk '{print $(NF-1)}'`
+        gpu_index=`echo $string | awk -F'[][]' '{print $(NF-1)}'`
+        gpu_hr=`echo $string | awk '{print $(NF-1)}'`
         if [[ $string == *"gh/s"* ]]; then
-            hashrate=$((`echo "scale=0; $hashrate * 1000 / 1" | bc -l`))
+            gpu_hr=$((`echo "scale=0; $gpu_hr * 1000 / 1" | bc -l`))
         fi
-        hash_arr+=($hashrate)
+        hash_arr+=($gpu_hr)
+        index_arr+=($gpu_index)
     done <<< $logPart
+
+    for i in "${index_arr[@]}"; do
+		[[ "${brands[i]}" != $BRAND_MINER ]] && continue
+		[[ "${busids[i]}" =~ ^([A-Fa-f0-9]+): ]]
+		busid_arr+=($((16#${BASH_REMATCH[1]})))
+		temp_arr+=(${temps[i]})
+		fan_arr+=(${fans[i]})	
+	done
             
     hash_json=`printf '%s\n' "${hash_arr[@]}" | jq -cs '.'`
     bus_numbers=`printf '%s\n' "${busid_arr[@]}"  | jq -cs '.'`
@@ -92,7 +98,7 @@ if [ "$diffTime" -lt "$maxDelay" ]; then
             --argjson fan "$fan_json" \
             --argjson temp "$temp_json" \
             --arg uptime "$uptime" \
-            '{ hs: $hs, hs_units: "mhs", algo : "JanusHash", ver:$ver , $uptime, $bus_numbers, $temp, $fan, ar: ['$ac', '$rj']}')
+            '{ hs: $hs, hs_units: "mhs", algo : "Janusscore", ver:$ver , $uptime, $bus_numbers, $temp, $fan, ar: ['$ac', '$rj']}')
     khs=$total_hashrate
 else
   khs=0
