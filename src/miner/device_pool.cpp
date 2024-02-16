@@ -77,7 +77,7 @@ Hashrate janusscore(uint64_t verus, uint64_t sha256t)
         return 0.0;
     }
     double c { double(C_CONSTANT) / double(0xFFFFFFFF) };
-    return double(sha256t) * (pow(c + double(verus) / double(sha256t), 0.3) - pow(c, 0.3)) / (pow(c + 1, 0.3) - pow(c, 0.3));
+    return (10.0 / 3.0) * double(sha256t) * (pow(c + double(verus) / double(sha256t), 0.3) - pow(c, 0.3));
 }
 
 void MiningCoordinator::print_hashrate()
@@ -93,8 +93,8 @@ void MiningCoordinator::print_hashrate()
     // }
     spdlog::info("Total hashrate (GPU): {}/s", Hashrate(sumSha256t).format().to_string());
 
-    for (auto& [name, hr] : sha256tHashrates) {
-        spdlog::info("   {}: {}/s", name, Hashrate(hr).format().to_string());
+    for (auto& [index, name, hr] : sha256tHashrates) {
+        spdlog::info("   [{}] {}: {}/s", index, name, Hashrate(hr).format().to_string());
     }
     spdlog::info("Total hashrate (CPU): {}/s", sumVerus.format().to_string());
     for (size_t i = 0; i < verusHashrates.size(); ++i) {

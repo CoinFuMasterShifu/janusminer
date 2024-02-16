@@ -245,6 +245,7 @@ public:
     [[nodiscard]] HashrateDelta stop_mining();
     [[nodiscard]] HashrateDelta set_zero();
 
+    uint32_t deviceIndex;
     const std::string deviceName;
 
 private:
@@ -307,7 +308,7 @@ public:
     {
         stop_mining();
     }
-    std::pair<uint64_t, std::vector<std::pair<std::string, uint64_t>>> hashrates();
+    std::pair<uint64_t, std::vector<std::tuple<uint32_t,std::string, uint64_t>>> hashrates();
     // void start_mining(const Header& header)
     // {
     //     for (auto& h : hashers) {

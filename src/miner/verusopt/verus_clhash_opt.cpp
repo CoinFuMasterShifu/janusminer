@@ -1290,17 +1290,17 @@ inline bool JanusMinerOpt::mine_job(MineResult& res, const CandidateBatch& job, 
             if (janushash < job.targetV2) {
                 std::span<const uint8_t, 4> s((const uint8_t*)&nonce, 4);
 
-                spdlog::info("janushash(header): {}< {}", janushash.to_double(), 1 / job.targetV2.difficulty());
-                spdlog::info("header: {}", serialize_hex(header));
-                spdlog::info("sha256thash: {}", serialize_hex(dummySha256tHash));
+                // spdlog::info("janushash(header): {}< {}", janushash.to_double(), 1 / job.targetV2.difficulty());
+                // spdlog::info("header: {}", serialize_hex(header));
+                // spdlog::info("sha256thash: {}", serialize_hex(dummySha256tHash));
                 auto hs { hashSHA256(hashSHA256(hashSHA256(header))) };
-                spdlog::info("SHA256(header): {}", serialize_hex(hs));
-                spdlog::info("SHA256tFloat: {}", sha256tFloat.to_double());
+                // spdlog::info("SHA256(header): {}", serialize_hex(hs));
+                // spdlog::info("SHA256tFloat: {}", sha256tFloat.to_double());
                 CustomFloat hsf { hs };
-                spdlog::info("SHA256tFloat2: {}", hsf.to_double());
-                spdlog::info("verush(header): {}", serialize_hex(verus_hash(header)));
-                spdlog::info("verusFloat: {}", verusFloat.to_double());
-                spdlog::info("j {}, {}", j, span[j].nonce());
+                // spdlog::info("SHA256tFloat2: {}", hsf.to_double());
+                // spdlog::info("verush(header): {}", serialize_hex(verus_hash(header)));
+                // spdlog::info("verusFloat: {}", verusFloat.to_double());
+                // spdlog::info("j {}, {}", j, span[j].nonce());
                 assert(curHash == verus_hash(header));
                 res.success = Verus::Success { curHash, mined.submit(s) };
                 return true;
