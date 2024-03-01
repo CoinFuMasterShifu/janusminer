@@ -1,5 +1,6 @@
 #include "connection.hpp"
 #include "connection_server.hpp"
+#include "logs.hpp"
 
 std::atomic<size_t> stratum::Connection::idCounter = { 0 };
 
@@ -80,15 +81,19 @@ void Connection::run()
         tcp::resolver resolver(context);
         spdlog::info("Connecting to pool {}, port {}...",connectionData.host, connectionData.port);
         asio::connect(*socket, resolver.resolve(connectionData.host, connectionData.port));
+        mining_log->info("Stratum disconnected");
         spdlog::info("Stratum connected.");
+        mining_log->info("Stratum connected.");
         async_read_line();
 
         stratum_subscribe("janusminer/0.0.1");
         stratum_authorize(connectionData.user, connectionData.pass);
     } catch (std::exception& e) {
+        mining_log->error("Connection Error: {}", e.what());
         spdlog::error(e.what());
     }
     context.run();
+    mining_log->info("Stratum disconnected");
     spdlog::info("Stratum disconnected.");
 }
 void Connection::async_read_line()

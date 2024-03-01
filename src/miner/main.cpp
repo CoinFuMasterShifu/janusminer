@@ -5,6 +5,7 @@
 #include "device_pool.hpp"
 #include "general/hex.hpp"
 #include "log/trace.hpp"
+#include "logs.hpp"
 #include "spdlog/spdlog.h"
 #include "stratum/connection.hpp"
 #include <iostream>
@@ -28,8 +29,8 @@ int process(gengetopt_args_info& ai)
         if (ai.gpus_given) {
             gpus.assign(ai.gpus_arg);
         }
-        
-        if (ai.queuesize_arg < 0 ) {
+
+        if (ai.queuesize_arg < 0) {
             spdlog::error("Queue size cannot be negative");
         }
         if (ai.address_given && strlen(ai.address_arg) > 0) {
@@ -39,17 +40,17 @@ int process(gengetopt_args_info& ai)
                 NodeConnectionData {
                     .host { host },
                     .port = port,
-                    .queuesizeGB=static_cast<size_t>(ai.queuesize_arg),
+                    .queuesizeGB = static_cast<size_t>(ai.queuesize_arg),
                     .address { ai.address_arg } });
-        } else if(ai.user_given) { // stratum
+        } else if (ai.user_given) { // stratum
             start_miner(gpus, threads,
                 stratum::ConnectionData {
                     .host { ai.host_arg },
                     .port { std::to_string(ai.port_arg) },
-                    .queuesizeGB=static_cast<size_t>(ai.queuesize_arg),
+                    .queuesizeGB = static_cast<size_t>(ai.queuesize_arg),
                     .user { ai.user_arg },
                     .pass { ai.password_arg } });
-        }else{
+        } else {
             spdlog::error("Either -a or -u parameter is required");
             return -1;
         }
@@ -65,6 +66,7 @@ int process(gengetopt_args_info& ai)
 
 int main(int argc, char** argv)
 {
+    initialize_mining_log();
     srand(time(0));
     cout << "Janushash Miner (By CoinFuMasterShifu) ⚒ ⛏" << endl;
     gengetopt_args_info ai;

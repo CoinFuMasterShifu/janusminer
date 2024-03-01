@@ -3,6 +3,7 @@
 #include "block/header/header_impl.hpp"
 #include "cpu/verus_worker.hpp"
 #include "helpers.hpp"
+#include "logs.hpp"
 
 std::optional<StratumGeneratorArgs> StratumConnectionData::generator_args()
 {
@@ -176,6 +177,7 @@ void MiningCoordinator::submit(const stratum::Submission& s)
 {
     assert(stratumConnection);
     stratumConnection->submit(s, stratumConnectionData.get_connection_id());
+    mining_log->info("Submitting to pool");
 }
 
 void MiningCoordinator::poll()
