@@ -177,7 +177,7 @@ void MiningCoordinator::submit(const stratum::Submission& s)
 {
     assert(stratumConnection);
     stratumConnection->submit(s, stratumConnectionData.get_connection_id());
-    mining_log->info("Submitting to pool");
+    stratum_mining_log->info("Submitting to pool");
 }
 
 void MiningCoordinator::poll()

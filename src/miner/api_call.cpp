@@ -1,6 +1,7 @@
 #include "api_call.hpp"
 #include "crypto/address.hpp"
 #include "general/hex.hpp"
+#include "logs.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include <iostream>
@@ -43,15 +44,18 @@ std::pair<std::string, int> API::submit_block(const Block& mt)
     std::string b = j.dump();
     while (true) {
         try {
+            node_mining_log->info("Trying to submit mined block {}", mt.height.value());
             std::string result = http_post(path, b);
             json parsed = json::parse(result);
             out.second = parsed["code"].get<int32_t>();
             if (out.second != 0) {
                 out.first = parsed["error"].get<std::string>();
             }
+            node_mining_log->info("Successfully submitted block {}", mt.height.value());
             return out;
         } catch (std::runtime_error& e) {
             spdlog::error(e.what());
+            node_mining_log->warn("Could not supply block, retrying in 100 milliseconds...");
             spdlog::warn("Could not supply block, retrying in 100 milliseconds...");
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
