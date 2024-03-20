@@ -83,3 +83,8 @@ To use it you need to select “Custom” miner when you create Flight Sheet and
 #### Flight Sheet example for HiveOS
 <img src="doc/img/hiveos_fs_example.png" style="width:500px;"/>
 
+#### mmpOS implementation
+* After installing and running the miner using the custom miner feature in mmpOS, the below mmp-stats.sh file can be pulled into the miner directory to enable hashrate reporting in mmpOS for the Janusminer.
+
+sudo wget https://update.mmpos.eu/fixes/j/mmp-stats.sh -O mmp-stats.sh
+sudo chmod +x mmp-stats.sh
