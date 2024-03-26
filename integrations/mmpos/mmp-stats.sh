@@ -110,8 +110,8 @@ json_busid+="]"
 	    --argjson busid "$json_busid" \
             --arg units "$units" \
             --arg ac "$ac" --arg inv "0" --arg rj "$rj" \
-            --arg miner_version "$CUSTOM_VERSION" \
-            --arg miner_name "$CUSTOM_NAME" \
+            --arg miner_version "$EXTERNAL_VERSION" \
+            --arg miner_name "$EXTERNAL_NAME" \
         '{$busid, $hash, $units, air: [$ac, $inv, $rj], miner_name: $miner_name, miner_version: $miner_version}')
     # total hashrate in khs
     echo $stats
