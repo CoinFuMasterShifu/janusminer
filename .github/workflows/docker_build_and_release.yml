@@ -57,6 +57,11 @@ jobs:
       run: |
         cp ./integrations/hiveos/* ./build/Ubuntu20
         ./build/Ubuntu20/build.sh janusminer_hiveosbeta ${{ env.VERSION }}
+        
+    - name: Build for mmpOS
+      run: |
+        cp ./integrations/mmpos/* ./build/Ubuntu20
+        ./build/Ubuntu20/build_mmpos.sh janusminer_mmpos ${{ env.VERSION }}
          
     - name: Create Release
       id: create_release
@@ -90,6 +95,17 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }} 
         asset_path: ./build/Ubuntu20/janusminer_hiveosbeta-${{ env.VERSION }}.tgz
         asset_name: janusminer_hiveosbeta-${{ env.VERSION }}.tgz
+        asset_content_type: application/octet-stream
+
+    - name: Upload mmpOS build 
+      id: upload-docker-build-output-mmpos
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }} 
+        asset_path: ./build/Ubuntu20/janusminer_mmpos_${{ env.VERSION }}.tar.gz
+        asset_name: janusminer_mmpos_${{ env.VERSION }}.tar.gz
         asset_content_type: application/octet-stream
         
     - name: Upload Windows build
