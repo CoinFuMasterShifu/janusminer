@@ -7,10 +7,22 @@ LOG_FILE=$2
 cd `dirname $0`
 . mmp-external.conf
 
+
 get_bus_ids() {
     local vendor_id="$1"
-    local bus_ids=$(lspci -n | awk '$2 ~ /^0300:/ && $3 ~ /^'"${vendor_id}"':/ {split($1, arr, ":"); print arr[1]}' | uniq)
-    echo "$bus_ids"
+    local bus_ids=$(/bin/lspci -n | awk '$2 ~ /^0300|0302:/ && $3 ~ /^'"${vendor_id}"':/ {print $1}')
+    local format_bus_ids=()
+
+    if [ -z "$bus_ids" ]; then
+        exit 1
+    fi
+
+    while read -r bus_id; do
+        local format_bus_id=${bus_id%%:*}
+        format_bus_ids+=("$format_bus_id")
+    done <<< "$bus_ids"
+
+    echo "${format_bus_ids[*]}"
 }
 
 get_cpu_hashes() {
@@ -69,11 +81,13 @@ get_miner_stats() {
     busid+=( "${nv_bus_ids[@]}" )
     busid+=( "${intel_bus_ids[@]}" )
 
-    json_busid="["
-    for element in "${busid[@]}"; do
-        if [ -n "$element" ]; then
-            json_busid+="\"$element\", "
-        fi
+    # Construct the JSON string for busid
+    json_busid="[\"${busid[0]}\","
+    for ((i = 1; i < ${#busid[@]}; i++)); do
+        IFS=' ' read -ra ids <<< "${busid[$i]}"
+        for id in "${ids[@]}"; do
+            json_busid+="\"$id\", "
+        done
     done
     json_busid="${json_busid%, }"
     json_busid+="]"
@@ -99,7 +113,6 @@ get_miner_stats() {
             --arg miner_version "$EXTERNAL_VERSION" \
             --arg miner_name "$EXTERNAL_NAME" \
         '{$busid, $hash, $units, air: [$ac, $inv, $rj], miner_name: $miner_name, miner_version: $miner_version}')
-    # total hashrate in khs
     echo $stats
 }
 get_miner_stats $GPU_COUNT $LOG_FILE
