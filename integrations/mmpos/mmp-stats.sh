@@ -10,7 +10,7 @@ cd `dirname $0`
 
 get_bus_ids() {
     local vendor_id="$1"
-    local bus_ids=$(/bin/lspci -n | awk '$2 ~ /^0300|0302:/ && $3 ~ /^'"${vendor_id}"':/ {print $1}')
+    local bus_ids=$(/bin/lspci -n | awk '$1 !~ /^00:/ && $2 ~ /^0300|0302:/ && $3 ~ /^'"${vendor_id}"':/ {print $1}')
     local format_bus_ids=()
 
     if [ -z "$bus_ids" ]; then
@@ -75,22 +75,22 @@ get_miner_stats() {
     local nv_bus_ids=$(get_bus_ids "10de")
     local intel_bus_ids=$(get_bus_ids "8086")
 
-    # busid generation for both CPU and GPU
-    busid=( "cpu" )
-    busid+=( "${amd_bus_ids[@]}" )
-    busid+=( "${nv_bus_ids[@]}" )
-    busid+=( "${intel_bus_ids[@]}" )
+# busid generation for both CPU and GPU
+busid=( "cpu" )
+busid+=( "${amd_bus_ids[@]}" )
+busid+=( "${nv_bus_ids[@]}" )
+busid+=( "${intel_bus_ids[@]}" )
 
-    # Construct the JSON string for busid
-    json_busid="[\"${busid[0]}\","
-    for ((i = 1; i < ${#busid[@]}; i++)); do
-        IFS=' ' read -ra ids <<< "${busid[$i]}"
-        for id in "${ids[@]}"; do
-            json_busid+="\"$id\", "
-        done
+# Construct the JSON string for busid
+json_busid="[\"${busid[0]}\","
+for ((i = 1; i < ${#busid[@]}; i++)); do
+    IFS=' ' read -ra ids <<< "${busid[$i]}"
+    for id in "${ids[@]}"; do
+        json_busid+="\"$id\", "
     done
-    json_busid="${json_busid%, }"
-    json_busid+="]"
+done
+json_busid="${json_busid%, }"
+json_busid+="]"
 
     # hashrate gathering
     local hash_cpu
@@ -107,12 +107,13 @@ get_miner_stats() {
 
     stats=$(jq -nc \
             --argjson hash "$(echo ${hash[*]} | tr " " "\n" | jq -cs '.')" \
-            --argjson busid "$json_busid" \
+	    --argjson busid "$json_busid" \
             --arg units "$units" \
             --arg ac "$ac" --arg inv "0" --arg rj "$rj" \
-            --arg miner_version "$EXTERNAL_VERSION" \
-            --arg miner_name "$EXTERNAL_NAME" \
+            --arg miner_version "$CUSTOM_VERSION" \
+            --arg miner_name "$CUSTOM_NAME" \
         '{$busid, $hash, $units, air: [$ac, $inv, $rj], miner_name: $miner_name, miner_version: $miner_version}')
+    # total hashrate in khs
     echo $stats
 }
 get_miner_stats $GPU_COUNT $LOG_FILE
