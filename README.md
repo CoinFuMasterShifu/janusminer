@@ -1,3 +1,8 @@
+# NOT UNDER ACTIVE DEVELOPMENT
+Note that this miner was only intended to be a temporary solution in the early days of Warthog and to serve as a reference for miner devs. There are probably better miners available today, [see here](https://www.warthog.network/docs/links/).
+
+---
+
 WARTHOG JANUSHASH MINER
 Copyright (c) 2023 CoinFuMasterShifu, Pumbaa, Timon & Rafiki
 <p align="center">
