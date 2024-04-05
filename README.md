@@ -22,7 +22,7 @@ Note: Ubuntu 20.04 does not meet these requirements.
 
 ## 😵‍💫 BUILD INSTRUCTIONS
 
-* Install dependencies (gcc, meson, ninja): 'sudo apt install meson ninja-build build-essential'
+* Install dependencies (gcc, meson, ninja): `sudo apt install meson ninja-build build-essential`
 * Clone the repo: `git clone https://github.com/CoinFuMasterShifu/janusminer`
 * cd into the repo: `cd janusminer`
 * Create build directory: `meson build .` (`meson build . --buildtype=release` for better performance)
