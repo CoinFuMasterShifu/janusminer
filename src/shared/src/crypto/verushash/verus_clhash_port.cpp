@@ -1397,7 +1397,6 @@ __m128i __verusclmulwithoutreduction64alignedrepeat_sv2_1_port(
   return acc;
 }
 
-// verus intermediate hash extra
 __m128i __verusclmulwithoutreduction64alignedrepeat_sv2_2_port(
     __m128i *randomsource, const __m128i buf[4], uint64_t keyMask,
     __m128i **pMoveScratch) {
@@ -1661,8 +1660,7 @@ __m128i __verusclmulwithoutreduction64alignedrepeat_sv2_2_port(
       _mm_store_si128_emu(prand, tempa2);
 
       acc = _mm_xor_si128_emu(tempa3, acc);
-      const __m128i temp4 =
-          _mm_load_si128_emu(pbuf - (((selector & 1) << 1) - 1));
+      const __m128i temp4 = _mm_load_si128_emu(pbuf - (((selector & 1) << 1) - 1));
       acc = _mm_xor_si128_emu(temp4, acc);
       const __m128i tempb1 = _mm_mulhrs_epi16_emu(acc, tempa3);
       const __m128i tempb2 = _mm_xor_si128_emu(tempb1, tempa3);
