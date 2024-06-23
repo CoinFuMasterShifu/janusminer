@@ -6,17 +6,6 @@
 #include "difficulty.hpp"
 #include "general/reader.hpp"
 
-inline bool HeaderView::validPOW(const Hash& h, NonzeroHeight height) const
-{
-    if (JANUSENABLED && height.value() > JANUSRETARGETSTART){
-        HashExponentialDigest hd; // prepare hash product of  Proof of Balanced work with two algos: verus + 3xsha256
-        hd.digest(verus_hash({ data(), size() })); // verus hash v2.1
-        hd.digest(hashSHA256(h)); // triple sha
-        return target_v2().compatible(hd);
-    } else {
-        return target_v1().compatible(h);
-    }
-}
 inline uint32_t HeaderView::version() const
 {
     return readuint32(data() + offset_version);

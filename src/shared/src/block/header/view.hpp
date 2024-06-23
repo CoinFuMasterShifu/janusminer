@@ -28,7 +28,6 @@ public:
 
 
     inline Target target(NonzeroHeight h) const;
-    bool validPOW(const Hash& h, NonzeroHeight height) const;
     inline uint32_t version() const;
     inline HashView prevhash() const;
     inline HashView merkleroot() const;

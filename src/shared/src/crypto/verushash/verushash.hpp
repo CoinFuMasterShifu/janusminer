@@ -25,7 +25,7 @@ public:
     {
         return write(s.data(), s.size());
     }
-    [[nodiscard]] Hash finalize();
+    [[nodiscard]] Hash finalize(bool use_2_2);
 
 private:
     // data
@@ -63,7 +63,7 @@ private:
 };
 } // namespace Verus
 
-[[nodiscard]] inline Hash verus_hash(std::span<const uint8_t> s) // verushash v2.1
+[[nodiscard]] inline Hash verus_hash(std::span<const uint8_t> s, bool use_2_2)
 {
-    return Verus::VerusHasher().write(s).finalize();
+    return Verus::VerusHasher().write(s).finalize(use_2_2);
 }

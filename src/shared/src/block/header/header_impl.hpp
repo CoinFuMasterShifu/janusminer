@@ -6,10 +6,6 @@ inline Target Header::target(NonzeroHeight h) const
 {
     return static_cast<HeaderView>(*this).target(h);
 }
-inline bool Header::validPOW(const Hash& h, NonzeroHeight height) const
-{
-    return static_cast<HeaderView>(*this).validPOW(h,height);
-}
 inline HashView Header::prevhash() const
 {
     return static_cast<HeaderView>(*this).prevhash();

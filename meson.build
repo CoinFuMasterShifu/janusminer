@@ -1,5 +1,5 @@
 project( 'Warthog Miner (Janushash)', ['c','cpp'],
-  version : '0.2.9',
+  version : '0.3.0',
   default_options : ['warning_level=3', 'cpp_std=c++20'])
 
 

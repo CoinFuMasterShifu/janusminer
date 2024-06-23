@@ -18,6 +18,8 @@ void haraka512_keyed(unsigned char* out, const unsigned char* in,
     const u128* rc);
 uint64_t verusclhash_sv2_1(void* random, const unsigned char buf[64],
     uint64_t keyMask, __m128i** pMoveScratch);
+uint64_t verusclhash_sv2_2(void* random, const unsigned char buf[64],
+    uint64_t keyMask, __m128i** pMoveScratch);
 namespace Verus {
 // class MinerOpt {
 //   struct Success {
@@ -58,6 +60,8 @@ public:
 
 private:
     bool mine_job(MineResult& res, const CandidateBatch& j, uint32_t threshold);
+    bool mine_job_v2_2(MineResult& res, const CandidateBatch& j, uint32_t threshold);
+    bool mine_job_v2_1(MineResult& res, const CandidateBatch& j, uint32_t threshold);
     void check_set_header(const std::array<uint8_t,76>&);
 
 private:

@@ -22,7 +22,6 @@ public:
     Header& operator=(HeaderView hv) { return *this = Header(hv); }
     operator HeaderView() const { return HeaderView(data()); }
     Target target(NonzeroHeight) const;
-    inline bool validPOW(const Hash&, NonzeroHeight) const;
     inline HashView prevhash() const;
     inline HashView merkleroot() const;
     void set_merkleroot(std::array<uint8_t, 32>);
