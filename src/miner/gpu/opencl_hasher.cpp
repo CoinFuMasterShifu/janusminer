@@ -218,7 +218,7 @@ void Sha256tOpenclHasher::update_fraction_locked()
         static optional<steady_clock::time_point> lastReported;
         auto now { steady_clock::now() };
         if (!lastReported || *lastReported + 10s < now) {
-            spdlog::warn("CPU ({}/s verus v2.1) outruns GPUs ({}/s sha256t)", vh.format().to_string(), Hashrate(totalHashrate).format().to_string());
+            spdlog::warn("CPU ({}/s verus v2.2) outruns GPUs ({}/s sha256t)", vh.format().to_string(), Hashrate(totalHashrate).format().to_string());
             lastReported = now;
         }
     }
