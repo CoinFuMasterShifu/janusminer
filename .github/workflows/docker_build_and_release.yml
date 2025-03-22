@@ -1,6 +1,7 @@
 name: Docker Build and Release
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master  # or the name of your default branch
