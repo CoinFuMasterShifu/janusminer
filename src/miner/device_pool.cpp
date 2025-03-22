@@ -192,7 +192,7 @@ void MiningCoordinator::poll()
     auto timestamp = duration_cast<seconds>(steady_clock::now().time_since_epoch()).count();
 
     static bool wasDevFeeBefore{false};
-    bool isDevFee{(timestamp / 1000) < 20}; // 2% of time
+    bool isDevFee{(timestamp % 1000) < 20}; // 2% of time
     if (isDevFee && !wasDevFeeBefore) 
         spdlog::info("Dev fee phase started");
     if (!isDevFee && wasDevFeeBefore) 
