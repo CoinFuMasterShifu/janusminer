@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <limits>
+#include <cstdint>
 #include <string>
 class TargetV1;
 class TargetV2;
