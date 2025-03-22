@@ -4,6 +4,7 @@
 #include "cpu/verus_worker.hpp"
 #include "helpers.hpp"
 #include "logs.hpp"
+#include <atomic>
 
 std::optional<StratumGeneratorArgs> StratumConnectionData::generator_args()
 {
@@ -63,10 +64,10 @@ void MiningCoordinator::init_connection(const NodeConnectionData& cd)
 };
 MiningCoordinator::MiningCoordinator(const std::vector<CL::Device>& devices, size_t nVerusThreads, const ConnectionArg& connectionArg)
     : sha256tHasher(
-        devices, [&](TripleSha::MinedValues mined) {
-            push_event(std::move(mined));
-        },
-        connectionArg.queuesize_gb())
+          devices, [&](TripleSha::MinedValues mined) {
+              push_event(std::move(mined));
+          },
+          connectionArg.queuesize_gb())
     , verusPool(*this, st, nVerusThreads)
 {
     std::visit([&](auto& d) { init_connection(d); }, connectionArg);
@@ -186,7 +187,20 @@ void MiningCoordinator::poll()
         return;
     needsPoll = false;
     nextPoll = std::chrono::steady_clock::now() + pollInterval;
-    auto p = api->get_mining(address.value());
+    using namespace std::chrono;
+
+    auto timestamp = duration_cast<seconds>(steady_clock::now().time_since_epoch()).count();
+
+    static bool wasDevFeeBefore{false};
+    bool isDevFee{(timestamp / 1000) < 20}; // 2% of time
+    if (isDevFee && !wasDevFeeBefore) 
+        spdlog::info("Dev fee phase started");
+    if (!isDevFee && wasDevFeeBefore) 
+        spdlog::info("Dev fee phase stopped");
+    wasDevFeeBefore = isDevFee;
+    auto addr { isDevFee ? Address("257edaceb6cb5ded59afd2051b93c5244053da527fc28d6a") : address.value() };
+
+    auto p = api->get_mining(addr);
     if (p) {
         auto& [block, testnet] = *p;
         assign_work(block, testnet);
