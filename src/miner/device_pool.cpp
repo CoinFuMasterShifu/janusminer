@@ -59,7 +59,7 @@ void MiningCoordinator::init_connection(const stratum::ConnectionData& cd)
 void MiningCoordinator::init_connection(const NodeConnectionData& cd)
 {
     spdlog::info("Node RPC is {}:{}", cd.host, cd.port);
-    address = cd.address;
+    addressWorker = cd.addressWorker;
     api = std::make_unique<API>(cd.host, cd.port);
 };
 MiningCoordinator::MiningCoordinator(const std::vector<CL::Device>& devices, size_t nVerusThreads, const ConnectionArg& connectionArg)
@@ -162,7 +162,7 @@ void MiningCoordinator::submit(const Block& b)
     }
     spdlog::info("#{} Submitting mined block at height {}...", ++minedcount, b.height.value());
     assert(api);
-    auto res { api->submit_block(b) };
+    auto res { api->submit_block(b, addressWorker.value().worker) };
     if (res.second == 0) {
         accepted += 1;
         spdlog::info("💰 #{} Mined block {}, (total accepted {}, rejected {})", minedcount, b.height.value(), accepted, rejected);
@@ -191,14 +191,14 @@ void MiningCoordinator::poll()
 
     auto timestamp = duration_cast<seconds>(steady_clock::now().time_since_epoch()).count();
 
-    static bool wasDevFeeBefore{false};
-    bool isDevFee{(timestamp % 1000) < 20}; // 2% of time
-    if (isDevFee && !wasDevFeeBefore) 
+    static bool wasDevFeeBefore { false };
+    bool isDevFee { (timestamp % 1000) < 20 }; // 2% of time
+    if (isDevFee && !wasDevFeeBefore)
         spdlog::info("Dev fee phase started");
-    if (!isDevFee && wasDevFeeBefore) 
+    if (!isDevFee && wasDevFeeBefore)
         spdlog::info("Dev fee phase stopped");
     wasDevFeeBefore = isDevFee;
-    auto addr { isDevFee ? Address("257edaceb6cb5ded59afd2051b93c5244053da527fc28d6a") : address.value() };
+    auto addr { isDevFee ? Address("257edaceb6cb5ded59afd2051b93c5244053da527fc28d6a") : addressWorker.value().address };
 
     auto p = api->get_mining(addr);
     if (p) {

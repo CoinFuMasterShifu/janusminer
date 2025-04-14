@@ -7,7 +7,7 @@
 class Address;
 struct API {
     API(std::string host, uint16_t port);
-    [[nodiscard]] std::pair<std::string, int> submit_block(const Block& mt);
+    [[nodiscard]] std::pair<std::string, int> submit_block(const Block& mt, const std::string& worker);
     [[nodiscard]] std::optional<std::pair<Block,bool>> get_mining(const Address& a);
 
 private:

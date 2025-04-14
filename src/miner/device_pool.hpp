@@ -17,11 +17,22 @@
 namespace Verus {
 class Worker;
 }
+struct AddressWorker {
+    Address address;
+    std::string worker;
+    AddressWorker(std::string s)
+    {
+        auto pos { s.find('.') };
+        address = { s.substr(0, pos) };
+        if (pos < s.size())
+            worker = s.substr(pos + 1);
+    }
+};
 struct NodeConnectionData {
     std::string host;
     uint16_t port;
     size_t queuesizeGB { 4 };
-    Address address;
+    AddressWorker addressWorker;
 };
 
 class ConnectionArg : public std::variant<stratum::ConnectionData, NodeConnectionData> {
@@ -149,7 +160,7 @@ private:
     std::chrono::steady_clock::time_point nextPoll;
 
     // for direct node communication
-    std::optional<Address> address;
+    std::optional<AddressWorker> addressWorker;
     std::unique_ptr<API> api;
 
     std::unique_ptr<stratum::ConnectionServer> stratumConnection;

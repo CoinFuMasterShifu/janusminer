@@ -36,12 +36,14 @@ int process(gengetopt_args_info& ai)
         if (ai.address_given && strlen(ai.address_arg) > 0) {
             if (ai.user_given && strlen(ai.user_arg) > 0)
                 spdlog::warn("Stratum parameter '-u' is ignored because direct-to-node mining is enabled via '-a'");
+            AddressWorker aw { ai.address_arg };
+            spdlog::info("RPC parameters: address {}, worker \'{}\'", aw.address.to_string(), aw.worker);
             start_miner(gpus, threads,
                 NodeConnectionData {
                     .host { host },
                     .port = port,
                     .queuesizeGB = static_cast<size_t>(ai.queuesize_arg),
-                    .address { ai.address_arg } });
+                    .addressWorker { aw } });
         } else if (ai.user_given) { // stratum
             start_miner(gpus, threads,
                 stratum::ConnectionData {

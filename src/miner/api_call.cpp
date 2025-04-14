@@ -9,7 +9,7 @@ using namespace std;
 using namespace nlohmann;
 
 API::API(std::string host, uint16_t port)
-    : cli(host, port) {};
+    : cli(host, port) { };
 size_t writeFunction(void* ptr, size_t size, size_t nmemb, std::string* data)
 {
     data->append((char*)ptr, size * nmemb);
@@ -32,7 +32,7 @@ std::string API::http_post(const std::string& path, const std::string& postdata)
     throw std::runtime_error("API request failed. Are you running the node with RPC endpoint enabled?");
 }
 
-std::pair<std::string, int> API::submit_block(const Block& mt)
+std::pair<std::string, int> API::submit_block(const Block& mt, const std::string& worker)
 {
     std::pair<std::string, int> out;
     std::string path = "/chain/append";
@@ -40,6 +40,7 @@ std::pair<std::string, int> API::submit_block(const Block& mt)
     j["body"] = serialize_hex(mt.body.data());
     j["header"] = serialize_hex(mt.header);
     j["height"] = mt.height.value();
+    j["worker"] = worker;
 
     std::string b = j.dump();
     while (true) {
